@@ -9,6 +9,14 @@ logger = logging.getLogger(__name__)
 
 
 def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime):
+    """
+    Prepare churn targets based on the official KKBox WSDM labeler logic.
+
+    This is a Python port of the Scala ``WSDMChurnLabeller`` used to generate
+    the competition's ``train.csv``.  The primary pipeline (``train_predict.py``)
+    uses the pre-computed labels from ``train.csv`` directly; this function is
+    retained as a reference implementation and for the legacy ``models.py`` path.
+    """
     # 1. Identify the 'last_expire' for each user as of cutoff_date
     tx_before = transactions[transactions["transaction_date"] <= cutoff_date].copy()
     if tx_before.empty:
@@ -69,7 +77,12 @@ def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime):
 
 
 def build_rfm_features(transactions: pd.DataFrame, cutoff_date: datetime):
-    """RFM from transaction history."""
+    """
+    Build Recency, Frequency, and Monetary (RFM) features from transaction history.
+
+    Filters out any transactions that occurred after the cutoff date to prevent
+    target leakage.
+    """
     # filter out future data
     tx_hist = transactions[transactions["transaction_date"] <= cutoff_date].copy()
 
@@ -90,7 +103,12 @@ def build_rfm_features(transactions: pd.DataFrame, cutoff_date: datetime):
 
 
 def build_engagement_features(user_logs: pd.DataFrame, cutoff_date: datetime):
-    """Engagement from logs - 30d and 60d windows."""
+    """
+    Build engagement features from user logs over 30-day and 60-day windows.
+
+    Calculates total listening time, active days, and unique songs played.
+    Also computes a trend ratio comparing recent 30-day activity to the 60-day average.
+    """
     logs_hist = user_logs[user_logs["date"] <= cutoff_date].copy()
 
     logs_30d = pd.DataFrame(
@@ -133,8 +151,14 @@ def engineer_features(
     user_logs: pd.DataFrame,
     cutoff_date: datetime,
 ):
-    """Main feature pipeline. Returns X, y."""
-    # TODO: add more demographic features if needed - city/registered_via aren't used currently
+    """
+    Main feature engineering pipeline (legacy path with heuristic labels).
+
+    Combines heuristic targets from ``prep_targets()``, RFM features, engagement
+    features, and demographics into a single feature matrix (X) and target
+    vector (y).  For the primary pipeline that uses official Kaggle labels,
+    see ``train_predict.py``.
+    """
     # Targets
     targets = prep_targets(transactions, cutoff_date)
 

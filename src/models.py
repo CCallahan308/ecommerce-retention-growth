@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_splits(X, y):
+    """
+    Split data into training and testing sets.
+
+    Drops the 'msno' identifier column and stratifies by the target variable.
+    """
     X_clean = X.drop(columns=["msno"])
     y_clean = y["is_churn"]
 
@@ -60,6 +65,11 @@ def make_pipeline(X_train: pd.DataFrame):
 
 
 def train_models(X_train, y_train, prep):
+    """
+    Train baseline Logistic Regression and XGBoost models.
+
+    Applies the preprocessing pipeline and fits the models on the training data.
+    """
     logger.info("Training Logistic Regression...")
     lr = Pipeline(
         steps=[
@@ -75,7 +85,6 @@ def train_models(X_train, y_train, prep):
     lr.fit(X_train, y_train)
 
     logger.info("Training XGBoost...")
-    # xgboost params - nothing fancy, just baseline
     xg = Pipeline(
         steps=[
             ("preprocessor", prep),
@@ -100,7 +109,11 @@ def train_models(X_train, y_train, prep):
 def evaluate_model(
     model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, model_name: str
 ):
-    """Eval metrics: ROC-AUC, PR-AUC, Brier, LogLoss."""
+    """
+    Evaluate a trained model on the test set.
+
+    Calculates ROC-AUC, PR-AUC, Brier Score, and LogLoss.
+    """
     y_pred_proba = model.predict_proba(X_test)[:, 1]
 
     # Ensure probabilities are clipped to avoid log(0) errors if any
@@ -123,6 +136,11 @@ def evaluate_model(
 if __name__ == "__main__":
     import os
     import sys
+
+    print("NOTE: For the main training pipeline using official Kaggle labels,")
+    print("      run 'python src/train_predict.py' instead.")
+    print("      This script uses heuristic labels from prep_targets().")
+    print()
 
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from src.data_loader import load_all_data

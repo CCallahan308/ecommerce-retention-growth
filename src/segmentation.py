@@ -7,7 +7,12 @@ from sklearn.preprocessing import StandardScaler
 
 
 def segment_users_kmeans(X: pd.DataFrame):
-    """K-means on RFM + engagement. Returns personas."""
+    """
+    Cluster users to find the whales.
+
+    Uses K-Means clustering on RFM and engagement features to group users into
+    personas like 'High-Value Whales', 'Power Users', and 'Casual'.
+    """
     print("running kmeans...")
     X_segment = X.copy()
 
@@ -63,7 +68,12 @@ def segment_users_kmeans(X: pd.DataFrame):
 
 
 def baseline_segments(X: pd.DataFrame):
-    """Simple heuristic segments based on monetary + recency."""
+    """
+    Create baseline segments using simple heuristic rules.
+
+    Assigns users to segments like 'High-Value Dormant', 'Highly Engaged Active',
+    'Churned/Lost', or 'Average Active' based on monetary total and recency.
+    """
     # basic rule of thumb baseline
     X_seg = X.copy()
 

@@ -1,5 +1,9 @@
 """
-EDA - plots for the subscription dataset.
+Exploratory Data Analysis Module.
+
+Performs visual and statistical inspection of the subscription dataset to uncover
+patterns in churn, engagement, and customer value. Generates static charts
+styled appropriately for business reports.
 """
 
 import logging
@@ -39,7 +43,17 @@ FIG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "figures")
 
 
 def plot_registration_cohorts(members_df, save_path=None):
-    """Registrations by gender over time."""
+    """
+    Plot the distribution of user registrations over time by gender.
+
+    Parameters
+    ----------
+    members_df : pd.DataFrame
+        Members dataframe.
+    save_path : str, optional
+        Path to save the figure.
+
+    """
     logger.info("Plotting registration cohorts.")
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -74,7 +88,17 @@ def plot_registration_cohorts(members_df, save_path=None):
 
 
 def plot_transaction_trends(transactions_df, save_path=None):
-    """Payment methods and auto-renew breakdown."""
+    """
+    Plot the breakdown of payment methods and auto-renew status.
+
+    Parameters
+    ----------
+    transactions_df : pd.DataFrame
+        Transactions dataframe.
+    save_path : str, optional
+        Path to save the figure.
+
+    """
     logger.info("Plotting transaction trends.")
     fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -120,7 +144,17 @@ def plot_transaction_trends(transactions_df, save_path=None):
 
 
 def plot_usage_intensity(user_logs_df, save_path=None):
-    """Daily listening time distribution."""
+    """
+    Plot the distribution of daily listening time.
+
+    Parameters
+    ----------
+    user_logs_df : pd.DataFrame
+        User usage telemetry dataframe.
+    save_path : str, optional
+        Path to save the figure.
+
+    """
     logger.info("Plotting usage intensity distributions.")
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -151,7 +185,6 @@ def plot_usage_intensity(user_logs_df, save_path=None):
 
 def main():
     """Run full EDA pipeline and generate reports."""
-    # make sure figs dir exists
     os.makedirs(FIG_DIR, exist_ok=True)
 
     logger.info("Starting Exploratory Data Analysis...")

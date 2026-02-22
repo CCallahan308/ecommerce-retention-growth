@@ -83,11 +83,14 @@ def main():
     logger.info("Extracting user_logs_v2.csv.7z. This is the 30GB file. Please wait...")
     extract_and_rename_recursive("user_logs_v2.csv.7z", "user_logs.csv")
 
+    # 4. Official train labels
+    extract_and_rename_recursive("train_v2.csv.7z", "train.csv")
+
     # Cleanup nested artifacts
     cleanup_nested_dirs(RAW_DATA_DIR)
 
     logger.info(
-        "Finished. Run 'python src/sample_kaggle_data.py' now to sample these real data files."
+        "Finished. Run 'python src/train_predict.py' to train and predict."
     )
 
 
