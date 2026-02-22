@@ -1,0 +1,29 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and Artifacts (NEVER commit raw data to GitHub)
+data/raw/*
+data/processed/*
+data/features/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/features/.gitkeep
+
+# Figures (Optional: keep these out if they are auto-generated, or commit them if you want them on GitHub)
+figures/*
+!figures/.gitkeep
+
+# Jupyter Checkpoints
+.ipynb_checkpoints/
