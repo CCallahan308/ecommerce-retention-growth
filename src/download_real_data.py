@@ -44,6 +44,7 @@ def main():
         "members_v3.csv.7z",
         "transactions_v2.csv.7z",
         "user_logs_v2.csv.7z",
+        "train_v2.csv.7z",
     ]
 
     for f in files_to_download:
@@ -77,7 +78,7 @@ def main():
             os.remove(archive_path)
 
     logger.info(
-        "Real Kaggle data downloaded and extracted! Note: user_logs.csv is VERY large. You may want to sample it if your computer crashes during EDA/Modeling."
+        "Real Kaggle data downloaded and extracted! Run 'python src/train_predict.py' to train and predict."
     )
 
 
