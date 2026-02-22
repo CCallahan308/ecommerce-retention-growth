@@ -21,9 +21,14 @@ data/features/*
 !data/processed/.gitkeep
 !data/features/.gitkeep
 
-# Figures (Optional: keep these out if they are auto-generated, or commit them if you want them on GitHub)
-figures/*
-!figures/.gitkeep
+# Large Kaggle competition archives (30GB+)
+kkbox-churn-prediction-challenge/
+
+# Figures — KEEP committed so README images render on GitHub
+# (only ignore .gitkeep placeholder)
 
 # Jupyter Checkpoints
 .ipynb_checkpoints/
+
+# Session artifacts
+session-ses_378d.md

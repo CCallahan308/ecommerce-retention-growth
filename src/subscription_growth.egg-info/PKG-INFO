@@ -1,0 +1,92 @@
+Metadata-Version: 2.4
+Name: subscription_growth
+Version: 0.1.0
+Summary: Customer Value Forecasting and Segmentation for Subscription Growth
+Author-email: AI Data Scientist <ai@example.com>
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy==2.3.*
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: scikit-learn>=1.3.0
+Requires-Dist: xgboost>=2.0.0
+Requires-Dist: matplotlib>=3.7.0
+Requires-Dist: seaborn>=0.12.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+
+# Subscription Churn & Value Segmentation
+
+Predicts subscription churn and groups users by lifetime value. 
+
+The goal here is to stop giving everyone the same blanket discount to stick around. We use an XGBoost model to find out who's actually at risk of leaving, and K-Means to figure out if they are actually worth saving.
+
+## What's in here
+
+* **Predictive Modeling:** Forecasts 30-day churn risk based on historical telemetry and billing data. 
+* **Customer Segmentation:** Clusters users based on RFM (Recency, Frequency, Monetary) to spot the big spenders.
+* **Large Data Handling:** Includes a quick chunking script (`sample_kaggle_data.py`) to process 30GB+ datasets without melting your laptop's RAM.
+* **Business Impact:** A notebook translating the model probs into dollar amounts to prove the ROI of targeting.
+* **Interpretability:** SHAP values to see what actually drives the churn.
+
+## Tech Stack
+Python, Pandas, NumPy, XGBoost, Scikit-Learn, SHAP, Pytest.
+
+## Project Structure
+```text
+├── data/raw/                  # Ignored in git; data goes here
+├── notebooks/
+│   └── 02_business_impact_scenarios.ipynb  # Final presentation & ROI analysis
+├── src/
+│   ├── download_real_data.py  # Kaggle API downloader
+│   ├── sample_kaggle_data.py  # 30GB chunking script
+│   ├── data_loader.py         # schema and data loading
+│   ├── eda.py                 # basic plots
+│   ├── features.py            # feature engineering
+│   ├── models.py              # modeling pipelines
+│   └── segmentation.py        # clustering
+└── tests/                     # basic unit tests
+```
+
+## How to Run
+
+### 1. Setup Environment
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 2. Get the Data
+You can either generate fake data or download the real [WSDM KKBox Kaggle Dataset](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data).
+
+**Option A: Generate Mock Data (Fastest)**
+```bash
+python src/generate_mock_data.py
+```
+
+**Option B: Download Real Kaggle Data**
+*(Make sure you have your `kaggle.json` API key setup and you've clicked "accept rules" on the Kaggle page)*
+```bash
+python src/download_real_data.py
+# If you only have 8-16GB RAM, run this right away so pandas doesn't crash on the 30GB logs:
+python src/sample_kaggle_data.py
+```
+
+### 3. Run it
+```bash
+python src/eda.py           
+python src/models.py        
+python src/segmentation.py  
+```
+
+### 4. Results
+Open the Jupyter notebook to see the ROI calculations and SHAP plots:
+```bash
+jupyter notebook notebooks/02_business_impact_scenarios.ipynb
+```
+
+## Tests
+```bash
+pytest tests/
+```

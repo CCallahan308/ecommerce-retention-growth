@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 def segment_users_kmeans(X: pd.DataFrame):
-    """Cluster users to find the whales."""
+    """K-means on RFM + engagement. Returns personas."""
     print("running kmeans...")
     X_segment = X.copy()
 
@@ -17,22 +17,30 @@ def segment_users_kmeans(X: pd.DataFrame):
         "frequency",
         "monetary_total",
         "total_secs_60d",
-        "active_days_60d"
+        "active_days_60d",
     ]
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("num", Pipeline([
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", StandardScaler())
-            ]), cluster_features)
+            (
+                "num",
+                Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                cluster_features,
+            )
         ]
     )
 
-    pipeline = Pipeline(steps=[
-        ("preprocessor", preprocessor),
-        ("kmeans", KMeans(n_clusters=4, random_state=42, n_init=10))
-    ])
+    pipeline = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("kmeans", KMeans(n_clusters=4, random_state=42, n_init=10)),
+        ]
+    )
 
     X_segment["cluster"] = pipeline.fit_predict(X_segment[cluster_features])
 
@@ -55,6 +63,7 @@ def segment_users_kmeans(X: pd.DataFrame):
 
 
 def baseline_segments(X: pd.DataFrame):
+    """Simple heuristic segments based on monetary + recency."""
     # basic rule of thumb baseline
     X_seg = X.copy()
 
@@ -77,6 +86,7 @@ def baseline_segments(X: pd.DataFrame):
 if __name__ == "__main__":
     import os
     import sys
+
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from src.data_loader import load_all_data
     from src.features import engineer_features
