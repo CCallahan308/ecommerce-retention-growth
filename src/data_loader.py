@@ -1,16 +1,14 @@
 import logging
 import os
-from typing import Any
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
-# Default paths
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
-MEMBERS_SCHEMA: Any = {
+MEMBERS_DTYPE = {
     "msno": "string",
     "city": "category",
     "bd": "Int16",
@@ -18,7 +16,7 @@ MEMBERS_SCHEMA: Any = {
     "registered_via": "category",
 }
 
-TRANSACTIONS_SCHEMA: Any = {
+TX_DTYPE = {
     "msno": "string",
     "payment_method_id": "category",
     "payment_plan_days": "Int16",
@@ -28,7 +26,7 @@ TRANSACTIONS_SCHEMA: Any = {
     "is_cancel": "Int8",
 }
 
-USER_LOGS_SCHEMA: Any = {
+LOGS_DTYPE = {
     "msno": "string",
     "num_25": "Int32",
     "num_50": "Int32",
@@ -41,40 +39,40 @@ USER_LOGS_SCHEMA: Any = {
 
 
 def load_members(filepath: str = os.path.join(DATA_DIR, "members.csv")) -> pd.DataFrame:
-    """Load demographics and handle missing ages/genders."""
     df = pd.read_csv(
         filepath,
-        dtype=MEMBERS_SCHEMA,  # type: ignore
+        dtype=MEMBERS_DTYPE,
         parse_dates=["registration_init_time"],
     )
 
-    # TODO: maybe check if median imputation is too aggressive here later
     df["gender"] = df["gender"].cat.add_categories(["Missing"]).fillna("Missing")
     df["bd"] = df["bd"].fillna(df["bd"].median())
 
     return df
 
 
-def load_transactions(filepath: str = os.path.join(DATA_DIR, "transactions.csv")) -> pd.DataFrame:
-    """Load billing history."""
+def load_transactions(
+    filepath: str = os.path.join(DATA_DIR, "transactions.csv"),
+) -> pd.DataFrame:
     df = pd.read_csv(
         filepath,
-        dtype=TRANSACTIONS_SCHEMA,  # type: ignore
+        dtype=TX_DTYPE,
         parse_dates=["transaction_date", "membership_expire_date"],
     )
 
-    # messy kaggle data sometimes has transaction after expiration
-    invalid_dates = df["transaction_date"] > df["membership_expire_date"]
-    if invalid_dates.any():
-        df = df[~invalid_dates].copy()  # type: ignore
+    bad = df["transaction_date"] > df["membership_expire_date"]
+    if bad.any():
+        df = df[~bad].copy()
 
-    return df  # type: ignore
+    return df
 
 
-def load_user_logs(filepath: str = os.path.join(DATA_DIR, "user_logs.csv")) -> pd.DataFrame:
+def load_user_logs(
+    filepath: str = os.path.join(DATA_DIR, "user_logs.csv"),
+) -> pd.DataFrame:
     df = pd.read_csv(
         filepath,
-        dtype=USER_LOGS_SCHEMA,  # type: ignore
+        dtype=LOGS_DTYPE,
         parse_dates=["date"],
     )
     df["total_secs"] = df["total_secs"].clip(lower=0)
@@ -82,6 +80,7 @@ def load_user_logs(filepath: str = os.path.join(DATA_DIR, "user_logs.csv")) -> p
 
 
 def load_all_data(data_dir: str = DATA_DIR):
+    # load all 3 files
     members = load_members(os.path.join(data_dir, "members.csv"))
     transactions = load_transactions(os.path.join(data_dir, "transactions.csv"))
     user_logs = load_user_logs(os.path.join(data_dir, "user_logs.csv"))

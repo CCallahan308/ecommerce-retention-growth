@@ -1,0 +1,19 @@
+{
+    "python-envs.pythonProjects": [],
+    "chat.tools.terminal.autoApprove": {
+        "/^C:/Users/Calla/OneDrive/Desktop/Project/Test/ecommerce-retention-growth/\\.venv/Scripts/python\\.exe -m ruff check \\.$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^C:/Users/Calla/OneDrive/Desktop/Project/Test/ecommerce-retention-growth/\\.venv/Scripts/python\\.exe -m ruff check --fix \\.$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^C:/Users/Calla/OneDrive/Desktop/Project/Test/ecommerce-retention-growth/\\.venv/Scripts/python\\.exe -m ruff format \\.$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "git add": true,
+        "git commit": true
+    }
+}

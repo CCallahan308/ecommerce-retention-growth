@@ -1,9 +1,6 @@
 """
-Synthetic dataset generator mirroring the KKBox Churn Prediction Challenge.
-
-Generates `members.csv`, `transactions.csv`, and `user_logs.csv` for a robust
-and reproducible pipeline, ensuring reviewers do not need to download gigabytes
-of data to evaluate the data engineering and modeling logic.
+Synthetic data generator - members, transactions, user_logs.
+Use this instead of downloading the huge Kaggle files.
 """
 
 import os
@@ -20,33 +17,21 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw
 
 
 def generate_members(num_users: int) -> pd.DataFrame:
-    """
-    Generate mock demographics and registration data for users.
-
-    Parameters
-    ----------
-    num_users : int
-        Number of unique users to generate.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing user member info.
-
-    """
+    """Generate mock members."""
     np.random.seed(42)
     user_ids = [f"U{str(i).zfill(5)}" for i in range(num_users)]
     cities = np.random.choice(range(1, 23), size=num_users)
     bd = np.random.normal(28, 10, size=num_users).astype(int)
     # Filter absurd ages
     bd = np.where((bd < 10) | (bd > 90), 0, bd)
-    genders = np.random.choice(["male", "female", "unknown"], size=num_users, p=[0.4, 0.4, 0.2])
+    genders = np.random.choice(
+        ["male", "female", "unknown"], size=num_users, p=[0.4, 0.4, 0.2]
+    )
     registered_via = np.random.choice([3, 4, 7, 9, 13], size=num_users)
 
     # Registration dates spanning the past 2 years
     reg_dates = [
-        START_DATE - timedelta(days=np.random.randint(0, 700))
-        for _ in range(num_users)
+        START_DATE - timedelta(days=np.random.randint(0, 700)) for _ in range(num_users)
     ]
 
     return pd.DataFrame(
@@ -62,20 +47,7 @@ def generate_members(num_users: int) -> pd.DataFrame:
 
 
 def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Generate mock transactional logs for users.
-
-    Parameters
-    ----------
-    members_df : pd.DataFrame
-        The members dataframe containing user IDs.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing transaction history.
-
-    """
+    """Generate mock transactions."""
     np.random.seed(42)
     transactions = []
 
@@ -96,7 +68,9 @@ def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
 
             # Transaction happens a few days before or on the expiration
             transaction_date = current_date + timedelta(days=np.random.randint(-2, 2))
-            membership_expire_date = transaction_date + timedelta(days=payment_plan_days)
+            membership_expire_date = transaction_date + timedelta(
+                days=payment_plan_days
+            )
             is_cancel = np.random.choice([0, 1], p=[0.95, 0.05])
 
             transactions.append(
@@ -122,20 +96,7 @@ def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate_user_logs(members_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Generate daily listening logs.
-
-    Parameters
-    ----------
-    members_df : pd.DataFrame
-        The members dataframe.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame containing daily usage telemetry.
-
-    """
+    """Generate mock listening logs."""
     np.random.seed(42)
     logs = []
 

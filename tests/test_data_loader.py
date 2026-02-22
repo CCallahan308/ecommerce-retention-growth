@@ -1,9 +1,16 @@
 """Tests for the data_loader module to ensure schema adherence and robust handling."""
 
 import os
+import sys
+from pathlib import Path
 
 import pandas as pd
 import pytest
+
+# Allow running this file directly: `python tests/test_data_loader.py`
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data_loader import (
     load_members,
@@ -38,12 +45,20 @@ def test_load_members_schema_and_imputation(mock_members_path):
 
     # Check shapes and types
     assert len(df) == 2
-    assert pd.api.types.is_categorical_dtype(df["gender"]) or pd.api.types.is_object_dtype(df["gender"]) or df["gender"].dtype.name == "category"
+    assert (
+        isinstance(df["gender"].dtype, pd.CategoricalDtype)
+        or pd.api.types.is_object_dtype(df["gender"])
+        or df["gender"].dtype.name == "category"
+    )
 
     # Check imputation
-    assert not pd.Series(df["bd"].isnull()).any(), "bd shouldn't have nulls after imputation"
+    assert not pd.Series(df["bd"].isnull()).any(), (
+        "bd shouldn't have nulls after imputation"
+    )
     assert "Missing" in df["gender"].cat.categories, "Missing category should be added"
-    assert df.loc[1, "gender"] == "Missing", "Null gender should be replaced with 'Missing'"
+    assert df.loc[1, "gender"] == "Missing", (
+        "Null gender should be replaced with 'Missing'"
+    )
 
 
 @pytest.fixture
