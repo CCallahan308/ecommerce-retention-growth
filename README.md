@@ -1,40 +1,37 @@
 # Subscription Churn & Value Segmentation
 
-A machine learning pipeline that predicts subscription churn and segments users by lifetime value to optimize retention campaign ROI. 
+Predicts subscription churn and groups users by lifetime value. 
 
-Instead of offering blanket discounts to save cancelling users, this project demonstrates how to use ML to target high-value, high-risk accounts—saving marketing budget and increasing net revenue.
+The goal here is to stop giving everyone the same blanket discount to stick around. We use an XGBoost model to find out who's actually at risk of leaving, and K-Means to figure out if they are actually worth saving.
 
-## 🚀 Key Features
+## What's in here
 
-* **Predictive Modeling (XGBoost):** Forecasts 30-day churn risk based on historical telemetry and billing data. Optimized for Precision-Recall AUC to handle class imbalance.
-* **Customer Segmentation (K-Means):** Clusters users based on RFM (Recency, Frequency, Monetary) and engagement trends to identify "High-Value Whales" vs. "Casual Users".
-* **Out-of-Core Data Engineering:** Includes scripts to safely process 30GB+ datasets on local hardware using memory-efficient chunking.
-* **Business Impact ROI:** Translates model probabilities into direct financial metrics, comparing ML-driven targeted campaigns against baseline blanket discounts.
-* **Interpretability:** Uses SHAP values to explain global and local churn drivers to stakeholders.
+* **Predictive Modeling:** Forecasts 30-day churn risk based on historical telemetry and billing data. 
+* **Customer Segmentation:** Clusters users based on RFM (Recency, Frequency, Monetary) to spot the big spenders.
+* **Large Data Handling:** Includes a quick chunking script (`sample_kaggle_data.py`) to process 30GB+ datasets without melting your laptop's RAM.
+* **Business Impact:** A notebook translating the model probs into dollar amounts to prove the ROI of targeting.
+* **Interpretability:** SHAP values to see what actually drives the churn.
 
-## 🛠️ Tech Stack
-**Core:** Python, Pandas, NumPy  
-**Modeling:** XGBoost, Scikit-Learn  
-**Interpretability & Viz:** SHAP, Matplotlib, Seaborn  
-**Engineering & Quality:** Pytest, Ruff (PEP-8), out-of-core chunking  
+## Tech Stack
+Python, Pandas, NumPy, XGBoost, Scikit-Learn, SHAP, Pytest.
 
-## 📂 Project Structure
+## Project Structure
 ```text
 ├── data/raw/                  # Ignored in git; data goes here
 ├── notebooks/
 │   └── 02_business_impact_scenarios.ipynb  # Final presentation & ROI analysis
 ├── src/
 │   ├── download_real_data.py  # Kaggle API downloader
-│   ├── sample_kaggle_data.py  # Out-of-core 30GB chunking script
-│   ├── data_loader.py         # Schema validation & typing
-│   ├── eda.py                 # Visual cohort analysis
-│   ├── features.py            # Temporal feature engineering (No target leakage)
-│   ├── models.py              # XGBoost & Logistic Regression pipelines
-│   └── segmentation.py        # K-Means RFM clustering
-└── tests/                     # Unit tests for data leakage prevention
+│   ├── sample_kaggle_data.py  # 30GB chunking script
+│   ├── data_loader.py         # schema and data loading
+│   ├── eda.py                 # basic plots
+│   ├── features.py            # feature engineering
+│   ├── models.py              # modeling pipelines
+│   └── segmentation.py        # clustering
+└── tests/                     # basic unit tests
 ```
 
-## ⚙️ How to Run
+## How to Run
 
 ### 1. Setup Environment
 ```bash
@@ -44,7 +41,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. Get the Data
-You can either generate synthetic data (fast) or download the real [WSDM KKBox Kaggle Dataset](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data) (~30GB).
+You can either generate fake data or download the real [WSDM KKBox Kaggle Dataset](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data).
 
 **Option A: Generate Mock Data (Fastest)**
 ```bash
@@ -52,33 +49,27 @@ python src/generate_mock_data.py
 ```
 
 **Option B: Download Real Kaggle Data**
-*(Requires `kaggle.json` API key in `~/.kaggle/` and accepting competition rules)*
+*(Make sure you have your `kaggle.json` API key setup and you've clicked "accept rules" on the Kaggle page)*
 ```bash
 python src/download_real_data.py
-# IMMEDIATELY run this to downsample the 30GB file so it fits in RAM:
+# If you only have 8-16GB RAM, run this right away so pandas doesn't crash on the 30GB logs:
 python src/sample_kaggle_data.py
 ```
 
-### 3. Run the Pipeline
-Once data is generated or downloaded, execute the pipeline:
+### 3. Run it
 ```bash
-python src/eda.py           # Generates distribution & cohort plots in /figures
-python src/models.py        # Trains and evaluates XGBoost model
-python src/segmentation.py  # Clusters users into business personas
+python src/eda.py           
+python src/models.py        
+python src/segmentation.py  
 ```
 
-### 4. View Results
-Open the Jupyter notebook to see the final ROI calculations and SHAP dependency plots:
+### 4. Results
+Open the Jupyter notebook to see the ROI calculations and SHAP plots:
 ```bash
 jupyter notebook notebooks/02_business_impact_scenarios.ipynb
 ```
 
-## ✅ Testing & Linting
-Run the test suite (validates schema and prevents temporal target leakage):
+## Tests
 ```bash
 pytest tests/
-```
-Check code formatting:
-```bash
-ruff check .
 ```

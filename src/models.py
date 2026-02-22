@@ -1,12 +1,3 @@
-"""
-Predictive Modeling Module.
-
-Trains and evaluates predictive models for churn forecasting. Uses strict pipeline
-architectures to prevent data leakage during scaling/imputation. Includes a simple
-interpretable baseline (Logistic Regression) and a complex non-linear model (XGBoost).
-"""
-
-import logging
 
 import pandas as pd
 import xgboost as xgb
@@ -18,53 +9,18 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
-
-def prepare_data_splits(X: pd.DataFrame, y: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """
-    Split data into training and testing sets.
-
-    Parameters
-    ----------
-    X : pd.DataFrame
-        Features dataframe.
-    y : pd.DataFrame
-        Target dataframe.
-
-    Returns
-    -------
-    Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
-        X_train, X_test, y_train, y_test
-
-    """
-    # Drop MSNO as it's an identifier, not a feature
+def get_splits(X, y):
     X_clean = X.drop(columns=["msno"])
     y_clean = y["is_churn"]
 
-    X_train, X_test, y_train, y_test = train_test_split(
+    return train_test_split(
         X_clean, y_clean, test_size=0.2, random_state=42, stratify=y_clean
     )
 
-    return X_train, X_test, y_train, y_test
 
-
-def build_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
-    """
-    Construct a scikit-learn preprocessing pipeline.
-
-    Parameters
-    ----------
-    X_train : pd.DataFrame
-        Training features to infer column types.
-
-    Returns
-    -------
-    ColumnTransformer
-        Transformer mapping categorical to OneHot and numeric to Scaled.
-
-    """
+def make_pipeline(X_train: pd.DataFrame):
+    """Basic prep pipeline for numerical and categorical columns."""
     numeric_features = X_train.select_dtypes(include=["int64", "float64", "Int16", "Int32", "Int8", "float32"]).columns.tolist()
     categorical_features = X_train.select_dtypes(include=["object", "category"]).columns.tolist()
 
@@ -78,71 +34,42 @@ def build_preprocessor(X_train: pd.DataFrame) -> ColumnTransformer:
         ("onehot", OneHotEncoder(handle_unknown="ignore"))
     ])
 
-    preprocessor = ColumnTransformer(
+    prep = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, numeric_features),
             ("cat", categorical_transformer, categorical_features)
         ]
     )
+    return prep
 
-    return preprocessor
 
-
-def train_logistic_regression(X_train: pd.DataFrame, y_train: pd.Series, preprocessor: ColumnTransformer) -> Pipeline:
-    """Train a baseline Logistic Regression model."""
-    logger.info("Training Logistic Regression baseline...")
-
-    pipeline = Pipeline(steps=[
-        ("preprocessor", preprocessor),
+def train_models(X_train, y_train, prep):
+    print("training LR...")
+    lr = Pipeline(steps=[
+        ("preprocessor", prep),
         ("classifier", LogisticRegression(class_weight="balanced", random_state=42, max_iter=1000))
     ])
+    lr.fit(X_train, y_train)
 
-    pipeline.fit(X_train, y_train)
-    return pipeline
-
-
-def train_xgboost(X_train: pd.DataFrame, y_train: pd.Series, preprocessor: ColumnTransformer) -> Pipeline:
-    """Train an XGBoost classifier."""
-    logger.info("Training XGBoost model...")
-
-    pipeline = Pipeline(steps=[
-        ("preprocessor", preprocessor),
+    print("training XGBoost...")
+    # TODO: try lightgbm later
+    xg = Pipeline(steps=[
+        ("preprocessor", prep),
         ("classifier", xgb.XGBClassifier(
-            use_label_encoder=False,
             eval_metric="logloss",
-            scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(), # Handle imbalance
+            scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(),
             random_state=42,
-            max_depth=4, # Prevent overfitting on small mock data
+            max_depth=4,
             learning_rate=0.1,
             n_estimators=100
         ))
     ])
+    xg.fit(X_train, y_train)
 
-    pipeline.fit(X_train, y_train)
-    return pipeline
+    return lr, xg
 
 
-def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, model_name: str) -> dict[str, float]:
-    """
-    Evaluate the model on holdout set using business-relevant metrics.
-
-    Parameters
-    ----------
-    model : Pipeline
-        Trained scikit-learn pipeline.
-    X_test : pd.DataFrame
-        Test features.
-    y_test : pd.Series
-        Test targets.
-    model_name : str
-        Name for logging.
-
-    Returns
-    -------
-    Dict[str, float]
-        Dictionary of metrics (ROC-AUC, PR-AUC, Brier).
-
-    """
+def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, model_name: str):
     y_pred_proba = model.predict_proba(X_test)[:, 1]
 
     metrics = {
@@ -151,9 +78,9 @@ def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, mod
         "Brier-Score": float(brier_score_loss(y_test, y_pred_proba))
     }
 
-    logger.info(f"--- {model_name} Evaluation ---")
+    print(f"--- {model_name} Evaluation ---")
     for k, v in metrics.items():
-        logger.info(f"{k}: {v:.4f}")
+        print(f"{k}: {v:.4f}")
 
     return metrics
 
@@ -161,24 +88,21 @@ def evaluate_model(model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, mod
 if __name__ == "__main__":
     import os
     import sys
-    from datetime import datetime
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from src.data_loader import load_all_data
     from src.features import engineer_features
 
     m, t, u = load_all_data()
-    
-    # Set CUTOFF dynamically based on the dataset's date range
+
     max_date = t["transaction_date"].max()
     CUTOFF = max_date - pd.Timedelta(days=30)
-    
+
     X, y = engineer_features(m, t, u, CUTOFF)
 
-    X_train, X_test, y_train, y_test = prepare_data_splits(X, y)
-    preprocessor = build_preprocessor(X_train)
+    X_train, X_test, y_train, y_test = get_splits(X, y)
+    prep = make_pipeline(X_train)
 
-    lr_model = train_logistic_regression(X_train, y_train, preprocessor)
-    lr_metrics = evaluate_model(lr_model, X_test, y_test, "Logistic Regression")
+    lr_model, xgb_model = train_models(X_train, y_train, prep)
 
-    xgb_model = train_xgboost(X_train, y_train, preprocessor)
-    xgb_metrics = evaluate_model(xgb_model, X_test, y_test, "XGBoost")
+    evaluate_model(lr_model, X_test, y_test, "Logistic Regression")
+    evaluate_model(xgb_model, X_test, y_test, "XGBoost")

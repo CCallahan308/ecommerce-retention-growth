@@ -11,7 +11,7 @@ import pytest
 from src.features import (
     build_engagement_features,
     build_rfm_features,
-    build_target_labels,
+    prep_targets,
 )
 
 CUTOFF = datetime(2023, 12, 1)
@@ -52,9 +52,9 @@ def mock_logs():
         }
     )
 
-def test_build_target_labels(mock_transactions):
+def test_prep_targets(mock_transactions):
     """Ensure targets only consider historical facts up to cutoff."""
-    targets = build_target_labels(mock_transactions, CUTOFF)
+    targets = prep_targets(mock_transactions, CUTOFF)
 
     assert len(targets) == 2
 
