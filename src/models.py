@@ -19,21 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_splits(X, y):
-    """
-    Split data into training and testing sets.
-
-    Drops the 'msno' identifier column and stratifies by the target variable.
-    """
     X_clean = X.drop(columns=["msno"])
     y_clean = y["is_churn"]
-
     return train_test_split(
         X_clean, y_clean, test_size=0.2, random_state=42, stratify=y_clean
     )
 
 
 def make_pipeline(X_train: pd.DataFrame):
-    """Basic prep pipeline for numerical and categorical columns."""
+    """Prep pipeline - handles both numeric and categorical."""
     numeric_features = X_train.select_dtypes(
         include=["int64", "float64", "Int16", "Int32", "Int8", "float32"]
     ).columns.tolist()
@@ -41,38 +35,33 @@ def make_pipeline(X_train: pd.DataFrame):
         include=["object", "category"]
     ).columns.tolist()
 
-    numeric_transformer = Pipeline(
-        steps=[
+    num_pipe = Pipeline(
+        [
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
         ]
     )
 
-    categorical_transformer = Pipeline(
-        steps=[
+    # could experiment with different strategies here
+    cat_pipe = Pipeline(
+        [
             ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
             ("onehot", OneHotEncoder(handle_unknown="ignore")),
         ]
     )
 
-    prep = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
+    return ColumnTransformer(
+        [
+            ("num", num_pipe, numeric_features),
+            ("cat", cat_pipe, categorical_features),
         ]
     )
-    return prep
 
 
 def train_models(X_train, y_train, prep):
-    """
-    Train baseline Logistic Regression and XGBoost models.
-
-    Applies the preprocessing pipeline and fits the models on the training data.
-    """
     logger.info("Training Logistic Regression...")
     lr = Pipeline(
-        steps=[
+        [
             ("preprocessor", prep),
             (
                 "classifier",
@@ -86,7 +75,7 @@ def train_models(X_train, y_train, prep):
 
     logger.info("Training XGBoost...")
     xg = Pipeline(
-        steps=[
+        [
             ("preprocessor", prep),
             (
                 "classifier",
@@ -106,27 +95,17 @@ def train_models(X_train, y_train, prep):
     return lr, xg
 
 
-def evaluate_model(
-    model: Pipeline, X_test: pd.DataFrame, y_test: pd.Series, model_name: str
-):
-    """
-    Evaluate a trained model on the test set.
-
-    Calculates ROC-AUC, PR-AUC, Brier Score, and LogLoss.
-    """
-    y_pred_proba = model.predict_proba(X_test)[:, 1]
-
-    # Ensure probabilities are clipped to avoid log(0) errors if any
-    y_pred_proba = y_pred_proba.clip(1e-15, 1 - 1e-15)
+def evaluate_model(model, X_test, y_test, name):
+    proba = model.predict_proba(X_test)[:, 1].clip(1e-15, 1 - 1e-15)
 
     metrics = {
-        "ROC-AUC": float(roc_auc_score(y_test, y_pred_proba)),
-        "PR-AUC": float(average_precision_score(y_test, y_pred_proba)),
-        "LogLoss": float(log_loss(y_test, y_pred_proba)),
-        "Brier-Score": float(brier_score_loss(y_test, y_pred_proba)),
+        "ROC-AUC": float(roc_auc_score(y_test, proba)),
+        "PR-AUC": float(average_precision_score(y_test, proba)),
+        "LogLoss": float(log_loss(y_test, proba)),
+        "Brier-Score": float(brier_score_loss(y_test, proba)),
     }
 
-    print(f"--- {model_name} Evaluation ---")
+    print(f"--- {name} ---")
     for k, v in metrics.items():
         print(f"{k}: {v:.4f}")
 
@@ -134,13 +113,10 @@ def evaluate_model(
 
 
 if __name__ == "__main__":
+    # NOTE: for the real pipeline using Kaggle labels, run train_predict.py
+    # this one uses heuristic labels
     import os
     import sys
-
-    print("NOTE: For the main training pipeline using official Kaggle labels,")
-    print("      run 'python src/train_predict.py' instead.")
-    print("      This script uses heuristic labels from prep_targets().")
-    print()
 
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from src.data_loader import load_all_data
@@ -149,14 +125,12 @@ if __name__ == "__main__":
     m, t, u = load_all_data()
 
     max_date = t["transaction_date"].max()
-    CUTOFF = max_date - pd.Timedelta(days=30)
+    cutoff = max_date - pd.Timedelta(days=30)
 
-    X, y = engineer_features(m, t, u, CUTOFF)
-
+    X, y = engineer_features(m, t, u, cutoff)
     X_train, X_test, y_train, y_test = get_splits(X, y)
     prep = make_pipeline(X_train)
 
-    lr_model, xgb_model = train_models(X_train, y_train, prep)
-
-    evaluate_model(lr_model, X_test, y_test, "Logistic Regression")
-    evaluate_model(xgb_model, X_test, y_test, "XGBoost")
+    lr, xgb = train_models(X_train, y_train, prep)
+    evaluate_model(lr, X_test, y_test, "Logistic Regression")
+    evaluate_model(xgb, X_test, y_test, "XGBoost")

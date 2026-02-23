@@ -1,4 +1,6 @@
-"""Tests for the data_loader module to ensure schema adherence and robust handling."""
+"""
+Data loader tests - schema and handling of edge cases.
+"""
 
 import os
 import sys
@@ -7,18 +9,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-# Allow running this file directly: `python tests/test_data_loader.py`
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data_loader import (
-    load_members,
-    load_transactions,
-)
+from src.data_loader import load_members, load_transactions
 
-# Use dummy data or the generated raw data for tests
-# In a real environment, we'd use small fixtures
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
 
@@ -28,8 +24,8 @@ def mock_members_path(tmp_path):
         {
             "msno": ["U001", "U002"],
             "city": [1, 2],
-            "bd": [28, None],  # One missing to test imputation
-            "gender": ["male", None],  # One missing to test category imputation
+            "bd": [28, None],
+            "gender": ["male", None],
             "registered_via": [3, 4],
             "registration_init_time": ["2023-01-01", "2023-02-01"],
         }
@@ -39,26 +35,17 @@ def mock_members_path(tmp_path):
     return str(filepath)
 
 
-def test_load_members_schema_and_imputation(mock_members_path):
-    """Test that missing demographic values are imputed properly."""
+def test_members_imputation(mock_members_path):
     df = load_members(mock_members_path)
 
-    # Check shapes and types
     assert len(df) == 2
-    assert (
-        isinstance(df["gender"].dtype, pd.CategoricalDtype)
-        or pd.api.types.is_object_dtype(df["gender"])
-        or df["gender"].dtype.name == "category"
+    assert df["gender"].dtype.name == "category" or pd.api.types.is_object_dtype(
+        df["gender"]
     )
 
-    # Check imputation
-    assert not pd.Series(df["bd"].isnull()).any(), (
-        "bd shouldn't have nulls after imputation"
-    )
-    assert "Missing" in df["gender"].cat.categories, "Missing category should be added"
-    assert df.loc[1, "gender"] == "Missing", (
-        "Null gender should be replaced with 'Missing'"
-    )
+    assert not df["bd"].isnull().any()
+    assert "Missing" in df["gender"].cat.categories
+    assert df.loc[1, "gender"] == "Missing"
 
 
 @pytest.fixture
@@ -72,9 +59,11 @@ def mock_transactions_path(tmp_path):
             "actual_amount_paid": [149.0, 149.0],
             "is_auto_renew": [1, 0],
             "is_cancel": [0, 1],
-            # U002 has an invalid date scenario (transaction > expire)
             "transaction_date": ["2023-01-01", "2023-02-15"],
-            "membership_expire_date": ["2023-01-31", "2023-02-01"],
+            "membership_expire_date": [
+                "2023-01-31",
+                "2023-02-01",
+            ],  # U002: tx after expire
         }
     )
     filepath = tmp_path / "transactions.csv"
@@ -82,10 +71,9 @@ def mock_transactions_path(tmp_path):
     return str(filepath)
 
 
-def test_load_transactions_drops_invalid_dates(mock_transactions_path):
-    """Test that transactions with expiration before transaction date are dropped."""
+def test_transactions_invalid_dates_dropped(mock_transactions_path):
+    """U002 has tx_date > expire_date, should get dropped."""
     df = load_transactions(mock_transactions_path)
 
-    # U002 should be dropped due to invalid temporal relationship
     assert len(df) == 1
     assert df.iloc[0]["msno"] == "U001"
