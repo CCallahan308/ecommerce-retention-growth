@@ -2,18 +2,18 @@
 
 > Built on the [WSDM KKBox Churn Prediction Challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge) dataset.
 
-Predicts 30-day subscription churn and segments users by lifetime value — trained on the **official Kaggle competition labels** (`train.csv`, 970k users), then predicts churn risk for every remaining member in the dataset.
+Predicts 30-day subscription churn and segments users by lifetime value. Trained on the official Kaggle competition labels (train.csv, 970k users), then scores every remaining member in the dataset.
 
 ## Approach
 
 | Stage | What It Does |
 | :--- | :--- |
-| **Training Labels** | Uses the official competition `train.csv` (970,960 ground-truth labels). Also includes a Python port of the [Scala churn labeler](https://github.com/kkbox/wsdm-cup-2018-churn-prediction-challenge) in `features.py` for reference. |
-| **Feature Engineering** | RFM from billing, 30/60-day engagement trends from logs, demographic tenure. Cutoff filtering prevents data leakage. |
-| **Modeling** | XGBoost + Logistic Regression baseline. Uses LogLoss (official Kaggle metric), ROC-AUC, PR-AUC, and Brier Score. |
-| **Prediction** | After training on labeled users, the best model scores every unlabeled member with a churn probability. |
-| **Segmentation** | K-Means on RFM + engagement to find whales, power users, casuals. |
-| **Business Impact** | ROI comparison of blanket vs. targeted retention campaigns. |
+| Training Labels | Uses the official competition `train.csv` (970,960 ground-truth labels). Also includes a Python port of the [Scala churn labeler](https://github.com/kkbox/wsdm-cup-2018-churn-prediction-challenge) in `features.py` for reference. |
+| Feature Engineering | RFM from billing, 30/60-day engagement trends from logs, demographic tenure. Cutoff filtering prevents data leakage. |
+| Modeling | XGBoost + Logistic Regression baseline. Uses LogLoss (official Kaggle metric), ROC-AUC, PR-AUC, and Brier Score. |
+| Prediction | After training on labeled users, the best model scores every unlabeled member with a churn probability. |
+| Segmentation | K-Means on RFM + engagement to find whales, power users, casuals. |
+| Business Impact | ROI comparison of blanket vs. targeted retention campaigns. |
 
 ## Data
 
@@ -67,7 +67,7 @@ After feature engineering, **484,496 labeled users** have sufficient activity da
 
 ![ROI Comparison](figures/roi_comparison.png)
 
-By targeting only the top 20% churn-risk users within high-value personas, the ML-driven strategy wastes less money on users who would have stayed anyway.
+By targeting only the top 20% churn-risk users within high-value personas, the ML-driven strategy wastes less money on users who would've stayed anyway.
 
 ## Project Structure
 
@@ -82,7 +82,7 @@ By targeting only the top 20% churn-risk users within high-value personas, the M
 │   │   ├── predictions.csv        # Churn scores for unlabeled users
 │   │   └── train_predictions.csv  # Scores + actuals for labeled users
 │   └── features/                  # Intermediate feature CSVs (gitignored)
-├── figures/                       # Generated charts (committed for README)
+├── figures/                       # Generated charts (committed)
 ├── notebooks/
 │   └── 02_business_impact_scenarios.ipynb
 ├── src/
@@ -110,12 +110,12 @@ pip install -r requirements.txt
 
 ### 2. Get the Data
 
-**Option A — Mock Data (no download required):**
+**Option A - Mock Data (no download required):**
 ```bash
 python src/generate_mock_data.py
 ```
 
-**Option B — Real Kaggle Data:**
+**Option B - Real Kaggle Data:**
 
 Download the [competition files](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data) and place the `.7z` archives in `kkbox-churn-prediction-challenge/` at the project root, then:
 ```bash
@@ -131,13 +131,12 @@ python src/download_real_data.py
 
 ### 3. Train and Predict
 ```bash
-# Main pipeline — trains on train.csv labels, predicts on unlabeled members
 python src/train_predict.py
 ```
 
-Outputs are saved to `data/processed/`:
-- **`predictions.csv`** — churn probability for every unlabeled member
-- **`train_predictions.csv`** — actual labels + predicted probabilities for training users
+Outputs go to `data/processed/`:
+- `predictions.csv` - churn probability for every unlabeled member
+- `train_predictions.csv` - actual labels + predicted probabilities for training users
 
 ### 4. Supporting Scripts
 ```bash
@@ -158,7 +157,7 @@ pytest tests/
 
 ## Tech Stack
 
-Python · Pandas · NumPy · XGBoost · Scikit-Learn · SHAP · Seaborn · Pytest
+Python, Pandas, NumPy, XGBoost, Scikit-Learn, SHAP, Seaborn, Pytest
 
 ## License
 

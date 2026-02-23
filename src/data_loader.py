@@ -7,7 +7,6 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
-# Default paths
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
 MEMBERS_SCHEMA: Any = {
@@ -41,7 +40,6 @@ USER_LOGS_SCHEMA: Any = {
 
 
 def load_members(filepath: str = os.path.join(DATA_DIR, "members.csv")) -> pd.DataFrame:
-    """Load demographics and handle missing ages/genders."""
     df = pd.read_csv(
         filepath,
         dtype=MEMBERS_SCHEMA,  # type: ignore
@@ -57,17 +55,16 @@ def load_members(filepath: str = os.path.join(DATA_DIR, "members.csv")) -> pd.Da
 def load_transactions(
     filepath: str = os.path.join(DATA_DIR, "transactions.csv"),
 ) -> pd.DataFrame:
-    """Load billing history."""
     df = pd.read_csv(
         filepath,
         dtype=TRANSACTIONS_SCHEMA,  # type: ignore
         parse_dates=["transaction_date", "membership_expire_date"],
     )
 
-    # Drop rows where transaction_date exceeds membership_expire_date (data quality)
-    invalid_dates = df["transaction_date"] > df["membership_expire_date"]
-    if invalid_dates.any():
-        df = df[~invalid_dates].copy()  # type: ignore
+    bad = df["transaction_date"] > df["membership_expire_date"]
+    if bad.any():
+        logger.warning(f"Dropping {bad.sum()} rows with wonky dates")
+        df = df[~bad].copy()  # type: ignore
 
     return df  # type: ignore
 
@@ -75,36 +72,28 @@ def load_transactions(
 def load_user_logs(
     filepath: str = os.path.join(DATA_DIR, "user_logs.csv"),
 ) -> pd.DataFrame:
-    """
-    Load user listening logs.
-
-    Parses dates and clips negative listening times to zero.
-    """
     df = pd.read_csv(
         filepath,
         dtype=USER_LOGS_SCHEMA,  # type: ignore
         parse_dates=["date"],
     )
-    df["total_secs"] = df["total_secs"].clip(lower=0)
+    df["total_secs"] = df["total_secs"].clip(
+        lower=0
+    )  # negative listening time = bug in source
     return df
 
 
-def load_all_data(data_dir: str = DATA_DIR):
-    """
-    Load all three datasets (members, transactions, user logs).
+def grab_everything(data_dir: str = DATA_DIR):
+    """Convenience wrapper - returns (members, transactions, user_logs)"""
+    m = load_members(os.path.join(data_dir, "members.csv"))
+    t = load_transactions(os.path.join(data_dir, "transactions.csv"))
+    u = load_user_logs(os.path.join(data_dir, "user_logs.csv"))
+    return m, t, u
 
-    Returns a tuple of (members, transactions, user_logs) DataFrames.
-    """
-    members = load_members(os.path.join(data_dir, "members.csv"))
-    transactions = load_transactions(os.path.join(data_dir, "transactions.csv"))
-    user_logs = load_user_logs(os.path.join(data_dir, "user_logs.csv"))
 
-    return members, transactions, user_logs
+load_all_data = grab_everything  # backwards compat
 
 
 if __name__ == "__main__":
-    try:
-        m, t, u = load_all_data()
-        print(f"Loaded ok. Members: {len(m)}, Trans: {len(t)}, Logs: {len(u)}")
-    except FileNotFoundError as e:
-        print(f"Missing file: {e}")
+    m, t, u = load_all_data()
+    print(f"Loaded ok. Members: {len(m)}, Trans: {len(t)}, Logs: {len(u)}")

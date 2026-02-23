@@ -8,15 +8,12 @@ from sklearn.preprocessing import StandardScaler
 
 def segment_users_kmeans(X: pd.DataFrame):
     """
-    Cluster users to find the whales.
-
-    Uses K-Means clustering on RFM and engagement features to group users into
-    personas like 'High-Value Whales', 'Power Users', and 'Casual'.
+    K-Means clustering on RFM + engagement.
+    Groups users into personas: whales, power users, casual.
     """
     print("running kmeans...")
     X_segment = X.copy()
 
-    # subset of features for clustering
     cluster_features = [
         "recency",
         "frequency",
@@ -25,8 +22,8 @@ def segment_users_kmeans(X: pd.DataFrame):
         "active_days_60d",
     ]
 
-    preprocessor = ColumnTransformer(
-        transformers=[
+    prep = ColumnTransformer(
+        [
             (
                 "num",
                 Pipeline(
@@ -36,13 +33,13 @@ def segment_users_kmeans(X: pd.DataFrame):
                     ]
                 ),
                 cluster_features,
-            )
+            ),
         ]
     )
 
     pipeline = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
+        [
+            ("preprocessor", prep),
             ("kmeans", KMeans(n_clusters=4, random_state=42, n_init=10)),
         ]
     )
@@ -50,46 +47,35 @@ def segment_users_kmeans(X: pd.DataFrame):
     X_segment["cluster"] = pipeline.fit_predict(X_segment[cluster_features])
 
     centroids = X_segment.groupby("cluster")[cluster_features].mean()
+    high_val = centroids["monetary_total"].idxmax()
+    high_eng = centroids["total_secs_60d"].idxmax()
 
-    # Heuristic mapping
-    high_value_cluster = centroids["monetary_total"].idxmax()
-    high_eng_cluster = centroids["total_secs_60d"].idxmax()
-
-    def get_label(c: int) -> str:
-        if c == high_value_cluster:
+    def label(c):
+        if c == high_val:
             return "High-Value Whales"
-        elif c == high_eng_cluster:
+        elif c == high_eng:
             return "Power Users"
-        else:
-            return "Casual"
+        return "Casual"
 
-    X_segment["persona"] = X_segment["cluster"].apply(get_label)
+    X_segment["persona"] = X_segment["cluster"].apply(label)
     return X_segment
 
 
 def baseline_segments(X: pd.DataFrame):
-    """
-    Create baseline segments using simple heuristic rules.
-
-    Assigns users to segments like 'High-Value Dormant', 'Highly Engaged Active',
-    'Churned/Lost', or 'Average Active' based on monetary total and recency.
-    """
-    # basic rule of thumb baseline
+    """Rule-based segments for comparison with ML approach."""
     X_seg = X.copy()
+    med = X_seg["monetary_total"].median()
 
-    med_monetary = X_seg["monetary_total"].median()
-
-    def assign_rule(row: pd.Series) -> str:
-        if row["monetary_total"] > med_monetary and row["recency"] > 30:
+    def assign(row):
+        if row["monetary_total"] > med and row["recency"] > 30:
             return "High-Value Dormant"
-        elif row["active_days_30d"] > 15 and row["recency"] < 10:
+        if row["active_days_30d"] > 15 and row["recency"] < 10:
             return "Highly Engaged Active"
-        elif row["recency"] > 45:
+        if row["recency"] > 45:
             return "Churned/Lost"
-        else:
-            return "Average Active"
+        return "Average Active"
 
-    X_seg["rule_segment"] = X_seg.apply(assign_rule, axis=1)
+    X_seg["rule_segment"] = X_seg.apply(assign, axis=1)
     return X_seg
 
 
@@ -104,12 +90,12 @@ if __name__ == "__main__":
     m, t, u = load_all_data()
 
     max_date = t["transaction_date"].max()
-    CUTOFF = max_date - pd.Timedelta(days=30)
+    cutoff = max_date - pd.Timedelta(days=30)
 
-    X, y = engineer_features(m, t, u, CUTOFF)
+    X, y = engineer_features(m, t, u, cutoff)
 
-    segmented_kmeans = segment_users_kmeans(X)
-    segmented_rules = baseline_segments(segmented_kmeans)
+    km = segment_users_kmeans(X)
+    rules = baseline_segments(km)
 
     print("\nCross-tab:")
-    print(pd.crosstab(segmented_rules["persona"], segmented_rules["rule_segment"]))
+    print(pd.crosstab(rules["persona"], rules["rule_segment"]))
