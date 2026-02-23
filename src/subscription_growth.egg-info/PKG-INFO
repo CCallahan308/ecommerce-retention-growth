@@ -2,7 +2,6 @@ Metadata-Version: 2.4
 Name: subscription_growth
 Version: 0.1.0
 Summary: Customer Value Forecasting and Segmentation for Subscription Growth
-Author-email: AI Data Scientist <ai@example.com>
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 Requires-Dist: numpy==2.3.*
