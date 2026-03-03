@@ -1,164 +1,101 @@
-# Subscription Churn Prediction & Customer Value Segmentation
+<div align="center">
+  <img src="figures/banner.png" alt="Project Banner" width="100%">
 
-> Built on the [WSDM KKBox Churn Prediction Challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge) dataset.
+  <h1>Subscription Churn Prediction & Retention ROI</h1>
+  <p><strong>Predicting 30-day churn and segmenting users to maximize retention campaign ROI.</strong></p>
 
-Predicts 30-day subscription churn and segments users by lifetime value. Trained on the official Kaggle competition labels (train.csv, 970k users), then scores every remaining member in the dataset.
+  <p>
+    <a href="https://github.com/CCallahan308/ecommerce-retention-growth/actions/workflows/pages.yml"><img src="https://github.com/CCallahan308/ecommerce-retention-growth/actions/workflows/pages.yml/badge.svg" alt="Deploy Pages"></a>
+    <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9%2B-blue.svg" alt="Python Version"></a>
+    <a href="https://github.com/CCallahan308/ecommerce-retention-growth/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+    <a href="https://github.com/CCallahan308/ecommerce-retention-growth/tree/main"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code Style: Black"></a>
+  </p>
+  
+  <p>
+    <a href="https://ccallahan308.github.io/ecommerce-retention-growth/"><strong>📖 Explore the Full Documentation Site</strong></a>
+  </p>
+</div>
 
-## Approach
+---
 
-| Stage | What It Does |
-| :--- | :--- |
-| Training Labels | Uses the official competition `train.csv` (970,960 ground-truth labels). Also includes a Python port of the [Scala churn labeler](https://github.com/kkbox/wsdm-cup-2018-churn-prediction-challenge) in `features.py` for reference. |
-| Feature Engineering | RFM from billing, 30/60-day engagement trends from logs, demographic tenure. Cutoff filtering prevents data leakage. |
-| Modeling | XGBoost + Logistic Regression baseline. Uses LogLoss (official Kaggle metric), ROC-AUC, PR-AUC, and Brier Score. |
-| Prediction | After training on labeled users, the best model scores every unlabeled member with a churn probability. |
-| Segmentation | K-Means on RFM + engagement to find whales, power users, casuals. |
-| Business Impact | ROI comparison of blanket vs. targeted retention campaigns. |
+## 🎯 Executive Summary
 
-## Data
+This project aims to optimize customer retention in subscription-based eCommerce models. High-risk customers are identified prior to churn, enabling targeted incentive campaigns that drastically improve Retention ROI compared to blanket marketing strategies.
 
-The pipeline uses the full KKBox competition dataset:
+Trained on the [WSDM KKBox Churn Prediction Challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge) dataset (scaling robustly across 400M+ log records), this pipeline achieves an **0.84 ROC-AUC**, effectively forecasting user departures 30 days in advance.
 
-| File | Records | Description |
-| :--- | ---: | :--- |
-| `train.csv` | 970,960 | Official ground-truth churn labels (`msno`, `is_churn`) |
-| `members.csv` | 6,769,473 | User demographics (city, age, gender, registration date) |
-| `transactions.csv` | ~21M | Billing history (plans, payments, auto-renew, cancellations) |
-| `user_logs.csv` | ~400M | Daily listening activity (songs played, listening time) |
+## 💰 Business Impact
 
-After feature engineering, **484,496 labeled users** have sufficient activity data for training, and **205,338 unlabeled users** receive churn predictions.
+> **Why it matters:** Blanket retention campaigns waste money on users who were going to stay anyway. By using predictive modeling to target only the high-risk, high-lifetime-value (LTV) users, we maximize marketing efficiency.
 
-## Results
-
-### Model Performance (484k Labeled Users, 80/20 Holdout)
-
-| Metric | Logistic Regression | XGBoost |
-| :--- | :--- | :--- |
-| **LogLoss** | 0.6153 | **0.4802** |
-| ROC-AUC | 0.7264 | **0.8411** |
-| PR-AUC | 0.2749 | **0.5157** |
-| Brier Score | 0.2065 | **0.1608** |
-
-*LogLoss is the official Kaggle competition metric.*
-
-### Predictions on Unlabeled Users
-
-| Stat | Value |
-| :--- | :--- |
-| Total scored | 205,338 |
-| Predicted churn | 187,365 (91.25%) |
-| Avg churn probability | 0.896 |
-
-> Unlabeled users skew toward dormant/inactive accounts, which the model correctly identifies as high risk.
-
-### Exploratory Data Analysis
-
-![Transaction Trends](figures/02_transaction_trends.png)
-
-### Confusion Matrix
-
-![Confusion Matrix](figures/confusion_matrix.png)
-
-### Drivers of Churn (SHAP)
-
-![SHAP Summary](figures/shap_summary.png)
-
-### Retention ROI: Blanket vs. Targeted Strategy
+### Blanket Strategy vs. ML-Driven Targeted Strategy
 
 ![ROI Comparison](figures/roi_comparison.png)
 
-By targeting only the top 20% churn-risk users within high-value personas, the ML-driven strategy wastes less money on users who would've stayed anyway.
+By integrating K-Means clustering (to define user lifetime value segments) with the XGBoost probability model (predicting flight risk), intervention budgets are concentrated strictly on users passing minimum ROI thresholds.
 
-## Project Structure
+## 🛠️ Technical Implementation
 
-```text
-├── data/
-│   ├── raw/                       # Raw CSVs (gitignored)
-│   │   ├── train.csv              # Official Kaggle competition labels
-│   │   ├── members.csv            # User demographics
-│   │   ├── transactions.csv       # Billing history
-│   │   └── user_logs.csv          # Daily listening logs
-│   ├── processed/                 # Model outputs (gitignored)
-│   │   ├── predictions.csv        # Churn scores for unlabeled users
-│   │   └── train_predictions.csv  # Scores + actuals for labeled users
-│   └── features/                  # Intermediate feature CSVs (gitignored)
-├── figures/                       # Generated charts (committed)
-├── notebooks/
-│   └── 02_business_impact_scenarios.ipynb
-├── src/
-│   ├── data_loader.py             # Schema definitions and data loading
-│   ├── eda.py                     # Exploratory visualizations
-│   ├── extract_kaggle_data.py     # .7z archive extractor for local Kaggle files
-│   ├── download_real_data.py      # Kaggle API downloader
-│   ├── features.py                # Feature engineering and churn labeler (reference)
-│   ├── generate_mock_data.py      # Synthetic data for quick testing
-│   ├── models.py                  # Model definitions and evaluation utilities
-│   ├── train_predict.py           # Main pipeline: train on train.csv, predict the rest
-│   ├── sample_kaggle_data.py      # Chunked sampling for 30GB+ files
-│   └── segmentation.py            # K-Means clustering
-└── tests/                         # Unit tests (pytest)
-```
+Our approach covers the complete Data Science lifecycle:
 
-## Quick Start
+| Stage | What It Does |
+| :--- | :--- |
+| **Data Eng & Pipeline** | Joins >400M daily listening logs with ~21M billing records. Creates rolling RFM metrics and demographic tenure features. Protects against data leakage via cutoff filtering. |
+| **Modeling Base** | Implements robust baseline Logistic Regression against an optimized XGBoost engine. Scored via LogLoss (official metric), ROC-AUC, PR-AUC, and Brier. |
+| **User Segmentation** | Groups users into *Whales*, *Power Users*, and *Casuals* using K-Means clustering on behavioral and engagement features. |
+| **Interpretability** | Utilizes **SHAP** (SHapley Additive exPlanations) for global feature importance and individual prediction transparency. |
 
-### 1. Environment Setup
+![SHAP Summary](figures/shap_summary.png)
+
+## 📊 Performance Metrics
+
+*Evaluated on an 80/20 holdout of 484k engineered, labeled users.*
+
+| Metric | Logistic Regression | XGBoost | Improvement |
+| :--- | :--- | :--- | :--- |
+| **LogLoss** | 0.6153 | **0.4802** | *22.0% better* |
+| **ROC-AUC** | 0.7264 | **0.8411** | *15.8% better* |
+| **PR-AUC**  | 0.2749 | **0.5157** | *87.6% better* |
+
+## 🚀 Quick Start
+
+Ensure you have Python 3.9+ installed and run the following in your terminal:
+
 ```bash
+# 1. Setup Environment
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Or `.venv\Scripts\activate` on Windows
 pip install -r requirements.txt
-```
 
-### 2. Get the Data
-
-**Option A - Mock Data (no download required):**
-```bash
+# 2. Get Mock Data (For quick testing without the 30GB Kaggle download)
 python src/generate_mock_data.py
-```
 
-**Option B - Real Kaggle Data:**
-
-Download the [competition files](https://www.kaggle.com/c/kkbox-churn-prediction-challenge/data) and place the `.7z` archives in `kkbox-churn-prediction-challenge/` at the project root, then:
-```bash
-python src/extract_kaggle_data.py
-```
-
-Or use the Kaggle API directly:
-```bash
-python src/download_real_data.py
-```
-
-> **Optional:** If your machine has < 32 GB RAM, you can downsample with `python src/sample_kaggle_data.py` before training.
-
-### 3. Train and Predict
-```bash
+# 3. Train & Predict
 python src/train_predict.py
 ```
 
-Outputs go to `data/processed/`:
-- `predictions.csv` - churn probability for every unlabeled member
-- `train_predictions.csv` - actual labels + predicted probabilities for training users
+> Outputs will be saved to `data/processed/predictions.csv`.
 
-### 4. Supporting Scripts
-```bash
-python src/eda.py             # Generate EDA visualizations
-python src/models.py          # Quick train/eval using heuristic labels (legacy)
-python src/segmentation.py    # Run K-Means clustering
-```
+For a more exploratory dive, launch the interactive notebooks:
 
-### 5. Business Analysis
 ```bash
 jupyter notebook notebooks/02_business_impact_scenarios.ipynb
 ```
 
-## Tests
-```bash
-pytest tests/
+## 📂 Repository Structure
+
+```text
+├── data/                  # Gitignored raw and processed CSVs
+├── docs/                  # MkDocs GitHub Pages documentation 
+├── figures/               # Automatically generated model evaluation charts
+├── notebooks/             # Exploratory analysis and business scenario modeling
+├── src/                   # Core Python application logic and pipelines
+├── tests/                 # Execution tests via PyTest
+├── mkdocs.yml             # Global MkDocs configuration
+└── README.md              # You are here!
 ```
 
-## Tech Stack
-
-Python, Pandas, NumPy, XGBoost, Scikit-Learn, SHAP, Seaborn, Pytest
-
-## License
-
-MIT
+---
+<div align="center">
+  <p>Built with ❤️ and Python.</p>
+</div>

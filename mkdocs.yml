@@ -1,0 +1,55 @@
+site_name: Subscription Churn Prediction & Retention ROI
+site_description: Predicting 30-day subscription churn and segmenting users by lifetime value.
+site_author: CCallahan308
+
+repo_url: https://github.com/CCallahan308/ecommerce-retention-growth
+repo_name: ecommerce-retention-growth
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
+
+nav:
+  - Overview: index.md
+  - Business Impact & ROI: business_impact.md
+  - Data & Engineering: data_engineering.md
+  - Model Performance: modeling.md
