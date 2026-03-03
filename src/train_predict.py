@@ -67,6 +67,44 @@ def build_all_features(
     return base
 
 
+from scipy.stats import ks_2samp
+
+def check_feature_drift(train_features: pd.DataFrame, predict_features: pd.DataFrame, threshold: float = 0.05):
+    """
+    Checks for feature distribution drift using Kolmogorov-Smirnov test.
+    Logs warnings for features that have drifted significantly.
+    """
+    logger.info("Checking for feature distribution drift...")
+    numeric_cols = train_features.select_dtypes(include=["number"]).columns
+    
+    drift_detected = False
+    for col in numeric_cols:
+        # Ignore target variable or IDs if accidentally included
+        if col in ["is_churn", "msno"]:
+            continue
+            
+        train_vals = train_features[col].dropna()
+        pred_vals = predict_features[col].dropna()
+        
+        if len(train_vals) == 0 or len(pred_vals) == 0:
+            continue
+            
+        # Perform KS test
+        statistic, p_value = ks_2samp(train_vals, pred_vals)
+        
+        if p_value < threshold:
+            drift_detected = True
+            logger.warning(
+                f"Drift detected in feature '{col}': "
+                f"KS Statistic = {statistic:.4f}, p-value = {p_value:.4e}"
+            )
+            
+    if not drift_detected:
+        logger.info("No significant feature drift detected.")
+    else:
+        logger.warning("Feature drift detected. Monitor model performance carefully.")
+
+
 def main() -> None:
     t0 = time.perf_counter()
 
@@ -117,6 +155,12 @@ def main() -> None:
     os.makedirs(out_dir, exist_ok=True)
 
     if len(predict_features) > 0:
+        print(f"\n{'=' * 60}")
+        print("PIPELINE VALIDATION")
+        print(f"{'=' * 60}")
+        # Run drift detection
+        check_feature_drift(train_df, predict_features)
+        
         X_predict = predict_features.drop(columns=["msno"])
         proba = xgb_model.predict_proba(X_predict)[:, 1]
 

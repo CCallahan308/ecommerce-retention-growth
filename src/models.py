@@ -58,6 +58,8 @@ def make_pipeline(X_train: pd.DataFrame):
     )
 
 
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+
 def train_models(X_train, y_train, prep):
     logger.info("Training Logistic Regression...")
     lr = Pipeline(
@@ -73,26 +75,47 @@ def train_models(X_train, y_train, prep):
     )
     lr.fit(X_train, y_train)
 
-    logger.info("Training XGBoost...")
-    xg = Pipeline(
+    logger.info("Tuning XGBoost with RandomizedSearchCV...")
+    # Base XGBoost without hardcoded params
+    xgb_base = xgb.XGBClassifier(
+        eval_metric="logloss",
+        scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(),
+        random_state=42,
+    )
+
+    xg_pipe = Pipeline(
         [
             ("preprocessor", prep),
-            (
-                "classifier",
-                xgb.XGBClassifier(
-                    eval_metric="logloss",
-                    scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(),
-                    random_state=42,
-                    max_depth=4,
-                    learning_rate=0.1,
-                    n_estimators=100,
-                ),
-            ),
+            ("classifier", xgb_base),
         ]
     )
-    xg.fit(X_train, y_train)
 
-    return lr, xg
+    # Simplified search space to avoid extremely long train times during testing
+    param_distributions = {
+        "classifier__max_depth": [3, 4, 5, 6],
+        "classifier__learning_rate": [0.01, 0.05, 0.1, 0.2],
+        "classifier__n_estimators": [50, 100, 200],
+        "classifier__subsample": [0.8, 1.0],
+    }
+
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+    xg_search = RandomizedSearchCV(
+        estimator=xg_pipe,
+        param_distributions=param_distributions,
+        n_iter=5, # Keep it small for reasonable runtime
+        scoring="neg_log_loss",
+        cv=cv,
+        verbose=1,
+        random_state=42,
+        n_jobs=-1,
+    )
+    
+    xg_search.fit(X_train, y_train)
+    
+    logger.info(f"Best XGBoost params: {xg_search.best_params_}")
+    
+    return lr, xg_search.best_estimator_
 
 
 def evaluate_model(model, X_test, y_test, name):

@@ -63,19 +63,23 @@ def segment_users_kmeans(X: pd.DataFrame):
 
 def baseline_segments(X: pd.DataFrame):
     """Rule-based segments for comparison with ML approach."""
+    import numpy as np
     X_seg = X.copy()
     med = X_seg["monetary_total"].median()
 
-    def assign(row):
-        if row["monetary_total"] > med and row["recency"] > 30:
-            return "High-Value Dormant"
-        if row["active_days_30d"] > 15 and row["recency"] < 10:
-            return "Highly Engaged Active"
-        if row["recency"] > 45:
-            return "Churned/Lost"
-        return "Average Active"
+    conditions = [
+        (X_seg["monetary_total"] > med) & (X_seg["recency"] > 30),
+        (X_seg["active_days_30d"] > 15) & (X_seg["recency"] < 10),
+        (X_seg["recency"] > 45),
+    ]
 
-    X_seg["rule_segment"] = X_seg.apply(assign, axis=1)
+    choices = [
+        "High-Value Dormant",
+        "Highly Engaged Active",
+        "Churned/Lost",
+    ]
+
+    X_seg["rule_segment"] = np.select(conditions, choices, default="Average Active")
     return X_seg
 
 
