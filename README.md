@@ -12,19 +12,18 @@
   </p>
   
   <p>
-    <a href="https://ccallahan308.github.io/ecommerce-retention-growth/"><strong>📖 Explore the Full Documentation Site</strong></a>
   </p>
 </div>
 
 ---
 
-## 🎯 Executive Summary
+##  Executive Summary
 
 This project aims to optimize customer retention in subscription-based eCommerce models. High-risk customers are identified prior to churn, enabling targeted incentive campaigns that drastically improve Retention ROI compared to blanket marketing strategies.
 
 Trained on the [WSDM KKBox Churn Prediction Challenge](https://www.kaggle.com/c/kkbox-churn-prediction-challenge) dataset (scaling robustly across 400M+ log records), this pipeline achieves an **0.84 ROC-AUC**, effectively forecasting user departures 30 days in advance.
 
-## 💰 Business Impact
+##  Business Impact
 
 > **Why it matters:** Blanket retention campaigns waste money on users who were going to stay anyway. By using predictive modeling to target only the high-risk, high-lifetime-value (LTV) users, we maximize marketing efficiency.
 
@@ -34,9 +33,9 @@ Trained on the [WSDM KKBox Churn Prediction Challenge](https://www.kaggle.com/c/
 
 By integrating K-Means clustering (to define user lifetime value segments) with the XGBoost probability model (predicting flight risk), intervention budgets are concentrated strictly on users passing minimum ROI thresholds.
 
-## 🛠️ Technical Implementation
+##  Technical Implementation
 
-Our approach covers the complete Data Science lifecycle:
+My approach covers the complete Data Science lifecycle:
 
 | Stage | What It Does |
 | :--- | :--- |
@@ -47,7 +46,7 @@ Our approach covers the complete Data Science lifecycle:
 
 ![SHAP Summary](figures/shap_summary.png)
 
-## 📊 Performance Metrics
+##  Performance Metrics
 
 *Evaluated on an 80/20 holdout of 484k engineered, labeled users.*
 
@@ -57,7 +56,7 @@ Our approach covers the complete Data Science lifecycle:
 | **ROC-AUC** | 0.7264 | **0.8411** | *15.8% better* |
 | **PR-AUC**  | 0.2749 | **0.5157** | *87.6% better* |
 
-## 🚀 Quick Start
+##  Quick Start
 
 Ensure you have Python 3.9+ installed and run the following in your terminal:
 
@@ -82,7 +81,7 @@ For a more exploratory dive, launch the interactive notebooks:
 jupyter notebook notebooks/02_business_impact_scenarios.ipynb
 ```
 
-## 📂 Repository Structure
+##  Repository Structure
 
 ```text
 ├── data/                  # Gitignored raw and processed CSVs
