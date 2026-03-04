@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="figures/banner.png" alt="Project Banner" width="100%">
 
   <h1>Subscription Churn Prediction & Retention ROI</h1>
   <p><strong>Predicting 30-day churn and segmenting users to maximize retention campaign ROI.</strong></p>
