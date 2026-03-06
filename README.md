@@ -1,4 +1,8 @@
 <div align="center">
+<<<<<<< HEAD
+=======
+
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
   <h1>Subscription Churn Prediction & Retention ROI</h1>
   <p><strong>Predicting 30-day churn and segmenting users to maximize retention campaign ROI.</strong></p>
 
@@ -10,19 +14,30 @@
   </p>
   
   <p>
+<<<<<<< HEAD
     <a href="https://ccallahan308.github.io/ecommerce-retention-growth/"><strong>Explore the Full Documentation Site</strong></a>
+=======
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
   </p>
 </div>
 
 ---
 
+<<<<<<< HEAD
 ## Abstract
+=======
+##  Executive Summary
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 This study presents a robust machine learning pipeline designed to predict customer churn in digital subscription models, enabling precise optimization of retention interventions. Utilizing the WSDM KKBox Churn Prediction Challenge dataset, comprising over 400 million daily log records and 21 million billing histories, models are developed to forecast subscriber departure within a 30-day window. By integrating a predictive XGBoost probability classifier with K-Means driven lifetime value segmentation, the framework shifts strategic focus from blanket marketing to targeted causal interventions. Performance evaluation on a holdout sample of 484,000 users validates the superiority of the optimized gradient boosting model, which achieves a 0.8411 ROC-AUC, outperforming the logistic regression baseline.
 
 ## Methodology
 
+<<<<<<< HEAD
 ### Data Preprocessing and Leakage Prevention
+=======
+##  Business Impact
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 The raw dataset undergoes rigorous temporal truncation relative to a standardized 30-day expiration window. Scikit-learn compatible `BaseEstimator` and `TransformerMixin` classes govern robust feature engineering across numerical and categorical modalities. This ensures independent transformations over Training and Validation splits.
 
@@ -34,17 +49,27 @@ $$
 \mathcal{L}(\theta) = - \frac{1}{N} \sum_{i=1}^N \left[ y_i \log(\hat{p}_i) + (1 - y_i) \log(1 - \hat{p}_i) \right]
 $$
 
+<<<<<<< HEAD
 ### Hyperparameter Optimization Search Space
 
 A `RandomizedSearchCV` implements a stratified 5-fold cross-validation mechanism to regulate model capacity against overfitting constraints. Parameters searched include combinations evaluating the number of gradient estimators (`n_estimators`), maximum tree depth (`max_depth`), feature subsetting distributions (`colsample_bytree`), stochastic descent updates (`learning_rate`), and row-wise aggregation (`subsample`).
+=======
+##  Technical Implementation
+
+My approach covers the complete Data Science lifecycle:
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 ### User Segmentation via K-Means Clustering
 
 Behavioral signals representing engagement and historical fiscal contributions inform orthogonal separation boundaries. K-Means clustering algorithmically minimizes the sum of squared intra-cluster distances to group the population:
 
+<<<<<<< HEAD
 $$
 J = \sum_{j=1}^{k} \sum_{x_i \in C_j} \| x_i - \mu_j \|^2
 $$
+=======
+##  Performance Metrics
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 Empirical centroid alignment divides populations into high-value ('Whales'), frequent-usage ('Power Users'), and intermittent interaction ('Casuals') segments.
 
@@ -70,7 +95,11 @@ Evaluation constraints enforce strict testing isolation against a labeled subset
 | **ROC-AUC** | 0.7264 | **0.8411** | +15.8% |
 | **PR-AUC**  | 0.2749 | **0.5157** | +87.6% |
 
+<<<<<<< HEAD
 Additionally, SHAP (SHapley Additive exPlanations) values provide local output explanations derived from cooperative game theory rules, ensuring high-dimension feature attribution transparency over individual risk scorings.
+=======
+##  Quick Start
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 <div align="center">
   <img src="figures/shap_summary.png" alt="SHAP TreeExplainer Summary Dependencies" width="80%">
@@ -78,7 +107,26 @@ Additionally, SHAP (SHapley Additive exPlanations) values provide local output e
 
 ## Repository Infrastructure
 
+<<<<<<< HEAD
 The core computation pipelines, module classes, and reproducible evaluations operate inside standardized dependency topologies configured by `pyproject.toml` and managed by the `uv` build backend.
+=======
+# 2. Get Mock Data (For quick testing without the 30GB Kaggle download)
+python src/generate_mock_data.py
+
+# 3. Train & Predict
+python src/train_predict.py
+```
+
+> Outputs will be saved to `data/processed/predictions.csv`.
+
+For a more exploratory dive, launch the interactive notebooks:
+
+```bash
+jupyter notebook notebooks/02_business_impact_scenarios.ipynb
+```
+
+##  Repository Structure
+>>>>>>> fc96c3c8e8f5592916d7213f01e81960d5e991a4
 
 ```text
 ├── data/                  # Transient computational stores
