@@ -16,7 +16,7 @@ This project solves this by scoring every customer with a **Churn Probability** 
 
 Below is the comparison of a simulated retention strategy targeting the entire user base versus targeting only users identified by our model as high-risk within high-lifetime-value clusters.
 
-![ROI Comparison](../figures/roi_comparison.png)
+![ROI Comparison](figures/roi_comparison.png)
 
 ### The Strategy Breakdown
 
