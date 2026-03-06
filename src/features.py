@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFrame:
     """
     Generates legacy heuristic churn targets (Python port of KKBox's Scala churn labeler).
+    Filters exclusively for active users at the cutoff date to prevent data leakage and 
+    artificial class imbalance.
 
     Parameters
     ----------
@@ -36,75 +38,54 @@ def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFr
     )
     last_tx = tx_before.groupby("msno").last().reset_index()
 
+    # FILTER: Only target users who are active (or in their 30-day grace period) at the cutoff date.
+    # Users whose membership expired > 30 days before the cutoff have definitively churned in the past
+    # and should not be included in the active prediction cohort.
+    grace_period_start = cutoff_date - pd.Timedelta(days=30)
+    last_tx = last_tx[last_tx["membership_expire_date"] > grace_period_start].copy()
+    
+    if last_tx.empty:
+        return pd.DataFrame(columns=["msno", "is_churn"])
+
     tx_after = transactions[transactions["transaction_date"] > cutoff_date].copy()
-    # If no data after cutoff, everyone churns
+    
+    # Initialize churn map with 1 (churned) for all eligible users
+    user_churn = pd.DataFrame({"msno": last_tx["msno"], "is_churn": 1})
+    
     if tx_after.empty:
-        return pd.DataFrame({"msno": last_tx["msno"], "is_churn": 1})
+        return user_churn
 
     tx_after = tx_after.sort_values(
         ["msno", "transaction_date", "membership_expire_date", "is_cancel"],
         ascending=[True, True, True, True],
     )
 
-    # Initialize churn map with 1 (churned) for all users active before cutoff
-    user_churn = pd.DataFrame({"msno": last_tx["msno"], "is_churn": 1})
-    
-    # Get last expiry from before cutoff
     last_expire_df = last_tx[["msno", "membership_expire_date"]].rename(
         columns={"membership_expire_date": "last_expire"}
     )
     
-    # Filter to only users who had tx before cutoff
     tx_merged = tx_after.merge(last_expire_df, on="msno", how="inner")
     if tx_merged.empty:
         return user_churn
 
-    # Calculate gap to next transaction
-    tx_merged["gap"] = (tx_merged["transaction_date"] - tx_merged["last_expire"]).dt.days
-    
-    # Handle cancellations modifying expiry
-    # Propagate last expire forward conditionally
-    
-    # The original logic:
-    # 1. Iterate through forward txs.
-    # 2. If it's a cancellation AND new expiry < last_expire, update last_expire.
-    # 3. If it's NOT a cancellation, gap = (transaction_date - last_expire). break loop.
-    # 4. is_churn = 1 if gap >= 30 else 0
-    
-    # We can vectorize this: find the FIRST non-cancellation transaction for each user.
-    # However, cancellations BEFORE that first non-cancellation might lower the expiry date.
-    
-    # First, let's keep track of the minimum expiry date seen *so far* for each user
     tx_merged["running_min_expire"] = tx_merged.groupby("msno")["membership_expire_date"].cummin()
-    
-    # The effective expiry for gap calculation is the minimum of (last_expire, running_min_expire_of_PREVIOUS_rows)
-    # Actually, if we just find the first non-cancel row, the effective last_expire is the min(last_expire, all previous cancel expiries).
-    
-    # Let's create a shifted running min expire
     shifted_min_expire = tx_merged.groupby("msno")["running_min_expire"].shift(1)
     
-    # The effective expiry date before this transaction is the minimum of original last_expire and the shifted running min
     tx_merged["effective_expire"] = tx_merged["last_expire"]
     mask = shifted_min_expire.notna() & (shifted_min_expire < tx_merged["effective_expire"])
     tx_merged.loc[mask, "effective_expire"] = shifted_min_expire[mask]
     
-    # Now calculate gap for all rows
     tx_merged["gap"] = (tx_merged["transaction_date"] - tx_merged["effective_expire"]).dt.days
     
-    # Find the FIRST non-cancel row
     first_non_cancel = tx_merged[tx_merged["is_cancel"] == 0].groupby("msno").first().reset_index()
-    
-    # For these users, update churn status based on gap
     first_non_cancel["churn_update"] = (first_non_cancel["gap"] >= 30).astype(int)
     
-    # Update the results
     user_churn = user_churn.merge(
         first_non_cancel[["msno", "churn_update"]], 
         on="msno", 
         how="left"
     )
     
-    # If churn_update is present, use it. Otherwise, keep it as 1 (churned) because there was no non-cancel row
     user_churn["is_churn"] = user_churn["churn_update"].fillna(user_churn["is_churn"]).astype(int)
     user_churn = user_churn.drop(columns=["churn_update"])
     
@@ -319,6 +300,7 @@ def engineer_features(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Legacy path using heuristic targets for early exploratory baselines.
+    Generates the base DataFrame (demographics and tenure) to be passed into a scikit-learn Pipeline.
     
     Parameters
     ----------
@@ -334,16 +316,12 @@ def engineer_features(
     Returns
     -------
     tuple[pd.DataFrame, pd.DataFrame]
-        Tuple of (X, y) containing features and labels.
+        Tuple of (X, y) containing base features and labels.
     """
     targets = prep_targets(transactions, cutoff_date)
-    rfm = build_rfm_features(transactions, cutoff_date)
-    eng = build_engagement_features(user_logs, cutoff_date)
 
     base = pd.merge(targets[["msno"]], members, on="msno", how="left")
-    base = pd.merge(base, rfm, on="msno", how="left")
-    base = pd.merge(base, eng, on="msno", how="left")
-
+    
     base["tenure_days"] = (cutoff_date - base["registration_init_time"]).dt.days
     base["tenure_days"] = base["tenure_days"].fillna(0).clip(lower=0)
 
