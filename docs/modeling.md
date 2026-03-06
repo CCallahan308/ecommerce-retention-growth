@@ -21,7 +21,7 @@ We rely on **SHAP** (SHapley Additive exPlanations) to guarantee that our model 
 
 ### Global Drivers of Churn
 
-![SHAP Summary](../figures/shap_summary.png)
+![SHAP Summary](figures/shap_summary.png)
 
 High importance features include:
 
@@ -33,4 +33,4 @@ High importance features include:
 
 By thresholding the predicted probability at `0.5`, we can observe the classification balance.
 
-![Confusion Matrix](../figures/confusion_matrix.png)
+![Confusion Matrix](figures/confusion_matrix.png)
