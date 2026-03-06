@@ -138,6 +138,17 @@ def main() -> None:
     transactions.to_csv(os.path.join(DATA_DIR, "transactions.csv"), index=False)
     user_logs.to_csv(os.path.join(DATA_DIR, "user_logs.csv"), index=False)
 
+    try:
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from src.features import prep_targets
+        max_date = transactions["transaction_date"].max()
+        cutoff = max_date - pd.Timedelta(days=30)
+        train_labels = prep_targets(transactions, pd.Timestamp(cutoff))
+        train_labels.to_csv(os.path.join(DATA_DIR, "train.csv"), index=False)
+    except Exception as e:
+        print(f"Failed to generate train.csv: {e}")
+
     print(f"Done - files in {DATA_DIR}")
 
 

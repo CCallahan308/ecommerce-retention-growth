@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Tuple
 
 import pandas as pd
 
@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
-MEMBERS_SCHEMA: Any = {
+MEMBERS_SCHEMA: dict[str, str] = {
     "msno": "string",
     "city": "category",
     "bd": "Int16",
@@ -17,7 +17,7 @@ MEMBERS_SCHEMA: Any = {
     "registered_via": "category",
 }
 
-TRANSACTIONS_SCHEMA: Any = {
+TRANSACTIONS_SCHEMA: dict[str, str] = {
     "msno": "string",
     "payment_method_id": "category",
     "payment_plan_days": "Int16",
@@ -27,7 +27,7 @@ TRANSACTIONS_SCHEMA: Any = {
     "is_cancel": "Int8",
 }
 
-USER_LOGS_SCHEMA: Any = {
+USER_LOGS_SCHEMA: dict[str, str] = {
     "msno": "string",
     "num_25": "Int32",
     "num_50": "Int32",
@@ -40,9 +40,22 @@ USER_LOGS_SCHEMA: Any = {
 
 
 def load_members(filepath: str = os.path.join(DATA_DIR, "members.csv")) -> pd.DataFrame:
+    """
+    Load the members dataset containing user demographics.
+
+    Parameters
+    ----------
+    filepath : str, optional
+        Path to the members CSV file. By default, uses the raw data directory.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing member data with clean categorical columns and imputed missing values.
+    """
     df = pd.read_csv(
         filepath,
-        dtype=MEMBERS_SCHEMA,  # type: ignore
+        dtype=MEMBERS_SCHEMA,
         parse_dates=["registration_init_time"],
     )
 
@@ -55,9 +68,22 @@ def load_members(filepath: str = os.path.join(DATA_DIR, "members.csv")) -> pd.Da
 def load_transactions(
     filepath: str = os.path.join(DATA_DIR, "transactions.csv"),
 ) -> pd.DataFrame:
+    """
+    Load the transactions dataset containing billing and plan history.
+
+    Parameters
+    ----------
+    filepath : str, optional
+        Path to the transactions CSV file. By default, uses the raw data directory.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing transaction records with invalid dates removed.
+    """
     df = pd.read_csv(
         filepath,
-        dtype=TRANSACTIONS_SCHEMA,  # type: ignore
+        dtype=TRANSACTIONS_SCHEMA,
         parse_dates=["transaction_date", "membership_expire_date"],
     )
 
@@ -72,9 +98,22 @@ def load_transactions(
 def load_user_logs(
     filepath: str = os.path.join(DATA_DIR, "user_logs.csv"),
 ) -> pd.DataFrame:
+    """
+    Load the user logs dataset containing daily listening statistics.
+
+    Parameters
+    ----------
+    filepath : str, optional
+        Path to the user logs CSV file. By default, uses the raw data directory.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing user listening logs with negative listening times clipped to 0.
+    """
     df = pd.read_csv(
         filepath,
-        dtype=USER_LOGS_SCHEMA,  # type: ignore
+        dtype=USER_LOGS_SCHEMA,
         parse_dates=["date"],
     )
     df["total_secs"] = df["total_secs"].clip(
@@ -83,8 +122,20 @@ def load_user_logs(
     return df
 
 
-def grab_everything(data_dir: str = DATA_DIR):
-    """Convenience wrapper - returns (members, transactions, user_logs)"""
+def grab_everything(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Load all three primary datasets simultaneously.
+
+    Parameters
+    ----------
+    data_dir : str, optional
+        Directory containing the raw CSV files. By default, uses the raw data directory.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+        A tuple containing (members, transactions, user_logs) DataFrames.
+    """
     m = load_members(os.path.join(data_dir, "members.csv"))
     t = load_transactions(os.path.join(data_dir, "transactions.csv"))
     u = load_user_logs(os.path.join(data_dir, "user_logs.csv"))
