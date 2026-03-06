@@ -16,14 +16,30 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from src.data_loader import DATA_DIR, load_all_data
-from src.features import build_engagement_features, build_rfm_features
+from src.features import RFMFeatureTransformer, EngagementFeatureTransformer
 from src.models import evaluate_model, get_splits, make_pipeline, train_models
+from sklearn.pipeline import Pipeline
+from scipy.stats import ks_2samp
+import numpy as np
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def load_train_labels(filepath: Optional[str] = None) -> pd.DataFrame:
+    """
+    Load official Kaggle training labels.
+
+    Parameters
+    ----------
+    filepath : str, optional
+        Path to explicit train CSV file.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame populated with 'msno' strings and 'is_churn' boolean label status.
+    """
     if filepath is None:
         filepath = os.path.join(DATA_DIR, "train.csv")
     df = pd.read_csv(filepath, dtype={"msno": "string", "is_churn": "Int8"})
@@ -32,47 +48,55 @@ def load_train_labels(filepath: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def build_all_features(
+def build_base_features(
     members: pd.DataFrame,
     transactions: pd.DataFrame,
     user_logs: pd.DataFrame,
     cutoff_date: pd.Timestamp,
 ) -> pd.DataFrame:
     """
-    Build features for every member who has at least some activity.
-    Members with zero transactions AND zero log entries get skipped
-    (nothing to learn from).
+    Build structural row definitions for every active member before pipeline feature joins.
+
+    Parameters
+    ----------
+    members : pd.DataFrame
+        DataFrame of user demographics.
+    transactions : pd.DataFrame
+        DataFrame of user transaction history.
+    user_logs : pd.DataFrame
+        DataFrame of user engagement signals.
+    cutoff_date : pd.Timestamp
+        Global cutoff boundary stringing historical data.
+
+    Returns
+    -------
+    pd.DataFrame
+        Base row definitions specifying which users require ML modeling inference scoring.
     """
-    logger.info("Building RFM features...")
-    rfm = build_rfm_features(transactions, cutoff_date)
-
-    logger.info("Building engagement features...")
-    eng = build_engagement_features(user_logs, cutoff_date)
-
-    active_msnos = set(rfm["msno"]).union(set(eng["msno"]))
+    active_msnos = set(transactions["msno"]).union(set(user_logs["msno"]))
     logger.info("Users with activity: %s", f"{len(active_msnos):,}")
 
     base = members[members["msno"].isin(active_msnos)].copy()
-    base = pd.merge(base, rfm, on="msno", how="left")
-    base = pd.merge(base, eng, on="msno", how="left")
-
     base["tenure_days"] = (cutoff_date - base["registration_init_time"]).dt.days
     base["tenure_days"] = base["tenure_days"].fillna(0).clip(lower=0)
 
     base = base.drop(columns=["registration_init_time"])
-
-    # numeric NaNs -> 0, categoricals already handled upstream
-    numeric_cols = base.select_dtypes(include=["number"]).columns
-    base[numeric_cols] = base[numeric_cols].fillna(0)
     return base
 
 
-from scipy.stats import ks_2samp
-
-def check_feature_drift(train_features: pd.DataFrame, predict_features: pd.DataFrame, threshold: float = 0.05):
+def check_feature_drift(train_features: pd.DataFrame, predict_features: pd.DataFrame, threshold: float = 0.05) -> None:
     """
     Checks for feature distribution drift using Kolmogorov-Smirnov test.
     Logs warnings for features that have drifted significantly.
+
+    Parameters
+    ----------
+    train_features: pd.DataFrame
+        Training data representation.
+    predict_features: pd.DataFrame
+        Evaluation data representation unobserved by prior HPO constraints.
+    threshold: float
+        Acceptance score variance significance alpha-probability.
     """
     logger.info("Checking for feature distribution drift...")
     numeric_cols = train_features.select_dtypes(include=["number"]).columns
@@ -107,6 +131,7 @@ def check_feature_drift(train_features: pd.DataFrame, predict_features: pd.DataF
 
 def main() -> None:
     t0 = time.perf_counter()
+    np.random.seed(42)
 
     logger.info("Loading datasets...")
     members, transactions, user_logs = load_all_data()
@@ -116,32 +141,32 @@ def main() -> None:
     cutoff = max_date - pd.Timedelta(days=30)
     logger.info("Feature cutoff date: %s", cutoff)
 
-    all_features = build_all_features(members, transactions, user_logs, cutoff)
-    logger.info(
-        "Feature matrix: %s rows x %s cols",
-        f"{len(all_features):,}",
-        all_features.shape[1],
-    )
+    feature_pipeline = Pipeline([
+        ('rfm', RFMFeatureTransformer(transactions, cutoff)),
+        ('eng', EngagementFeatureTransformer(user_logs, cutoff)),
+    ])
+
+    base_features = build_base_features(members, transactions, user_logs, cutoff)
 
     # split labeled vs unlabeled
     train_msno = set(train_labels["msno"])
-    labeled_mask = all_features["msno"].isin(train_msno)
+    labeled_mask = base_features["msno"].isin(train_msno)
 
-    train_features = all_features[labeled_mask].copy()
-    predict_features = all_features[~labeled_mask].copy()
+    train_base = base_features[labeled_mask].copy()
+    predict_base = base_features[~labeled_mask].copy()
 
-    train_df = pd.merge(train_features, train_labels, on="msno", how="inner")
+    train_df = pd.merge(train_base, train_labels, on="msno", how="inner")
 
     logger.info("Labeled users with features: %s", f"{len(train_df):,}")
-    logger.info("Unlabeled users to predict:  %s", f"{len(predict_features):,}")
+    logger.info("Unlabeled users to predict:  %s", f"{len(predict_base):,}")
 
     X = train_df.drop(columns=["is_churn"])
     y = train_df[["msno", "is_churn"]]
 
     X_train, X_test, y_train, y_test = get_splits(X, y)
 
-    prep = make_pipeline(X_train)
-    lr_model, xgb_model = train_models(X_train, y_train, prep)
+    prep = make_pipeline()
+    lr_model, xgb_model = train_models(X_train, y_train, feature_pipeline, prep)
 
     print(f"\n{'=' * 60}")
     print("EVALUATION ON HELD-OUT LABELED DATA (20%)")
@@ -154,19 +179,18 @@ def main() -> None:
     )
     os.makedirs(out_dir, exist_ok=True)
 
-    if len(predict_features) > 0:
+    if len(predict_base) > 0:
         print(f"\n{'=' * 60}")
         print("PIPELINE VALIDATION")
         print(f"{'=' * 60}")
-        # Run drift detection
-        check_feature_drift(train_df, predict_features)
         
-        X_predict = predict_features.drop(columns=["msno"])
+        X_predict = predict_base.drop(columns=["msno"])
+        # predict_proba runs pipeline transformation
         proba = xgb_model.predict_proba(X_predict)[:, 1]
 
         results = pd.DataFrame(
             {
-                "msno": predict_features["msno"].values,
+                "msno": predict_base["msno"].values,
                 "churn_probability": proba,
                 "predicted_churn": (proba >= 0.5).astype(int),
             }

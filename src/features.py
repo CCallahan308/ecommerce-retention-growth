@@ -4,16 +4,27 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from typing import Optional
+from sklearn.base import BaseEstimator, TransformerMixin
 
 logger = logging.getLogger(__name__)
 
 
-def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime):
+def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFrame:
     """
-    Python port of KKBox's Scala churn labeler.
+    Generates legacy heuristic churn targets (Python port of KKBox's Scala churn labeler).
 
-    Main pipeline uses pre-computed train.csv labels directly - this is here
-    for reference and the legacy models.py path.
+    Parameters
+    ----------
+    transactions : pd.DataFrame
+        DataFrame containing transaction history.
+    cutoff_date : datetime
+        The cutoff date for evaluating historical status without leaking future information.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with 'msno' and 'is_churn' target labels indicating user churn status.
     """
     tx_before = transactions[transactions["transaction_date"] <= cutoff_date].copy()
     if tx_before.empty:
@@ -100,8 +111,81 @@ def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime):
     return user_churn
 
 
-def build_rfm_features(transactions: pd.DataFrame, cutoff_date: datetime):
-    """RFM from billing - cutoff keeps leakage out."""
+class RFMFeatureTransformer(BaseEstimator, TransformerMixin):
+    """
+    Scikit-learn compatible transformer to generate RFM features from transactions.
+
+    Parameters
+    ----------
+    transactions : pd.DataFrame
+        The transactions dataset containing billing and plan history.
+    cutoff_date : datetime
+        The date to use as the cutoff for generating features to prevent data leakage.
+    """
+    def __init__(self, transactions: pd.DataFrame, cutoff_date: datetime):
+        self.transactions = transactions
+        self.cutoff_date = cutoff_date
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "RFMFeatureTransformer":
+        """
+        Fit the transformer (no-op).
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data containing 'msno' columns.
+        y : pd.Series, optional
+            The target labels, by default None.
+
+        Returns
+        -------
+        RFMFeatureTransformer
+            The fitted transformer instance.
+        """
+        self.is_fitted_ = True
+        return self
+
+    def __sklearn_is_fitted__(self) -> bool:
+        return hasattr(self, "is_fitted_") and self.is_fitted_
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Generate RFM features and merge with the input DataFrame.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data containing 'msno' columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with RFM features appended.
+        """
+        rfm = build_rfm_features(self.transactions, self.cutoff_date)
+        rfm_cols = [c for c in rfm.columns if c != "msno"]
+        X_clean = X.drop(columns=[c for c in rfm_cols if c in X.columns])
+        res = pd.merge(X_clean, rfm, on="msno", how="left")
+        res[rfm_cols] = res[rfm_cols].fillna(0)
+        return res
+
+
+def build_rfm_features(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFrame:
+    """
+    Compute RFM from billing history, masking data strictly past the cutoff date.
+
+    Parameters
+    ----------
+    transactions : pd.DataFrame
+        DataFrame of user transactions.
+    cutoff_date : datetime
+        Global cutoff boundary to prevent data leakage.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of basic RFM features.
+    """
     tx_hist = transactions[transactions["transaction_date"] <= cutoff_date].copy()
 
     rfm = (
@@ -120,7 +204,81 @@ def build_rfm_features(transactions: pd.DataFrame, cutoff_date: datetime):
     return rfm
 
 
-def build_engagement_features(user_logs: pd.DataFrame, cutoff_date: datetime):
+class EngagementFeatureTransformer(BaseEstimator, TransformerMixin):
+    """
+    Scikit-learn compatible transformer to generate engagement features from user logs.
+
+    Parameters
+    ----------
+    user_logs : pd.DataFrame
+        The user logs dataset containing daily listening statistics.
+    cutoff_date : datetime
+        The date to use as the cutoff for generating features to prevent data leakage.
+    """
+    def __init__(self, user_logs: pd.DataFrame, cutoff_date: datetime):
+        self.user_logs = user_logs
+        self.cutoff_date = cutoff_date
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "EngagementFeatureTransformer":
+        """
+        Fit the transformer (no-op).
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data containing 'msno' columns.
+        y : pd.Series, optional
+            The target labels, by default None.
+
+        Returns
+        -------
+        EngagementFeatureTransformer
+            The fitted transformer instance.
+        """
+        self.is_fitted_ = True
+        return self
+
+    def __sklearn_is_fitted__(self) -> bool:
+        return hasattr(self, "is_fitted_") and self.is_fitted_
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Generate engagement features and merge with the input DataFrame.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data containing 'msno' columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with engagement features appended.
+        """
+        eng = build_engagement_features(self.user_logs, self.cutoff_date)
+        eng_cols = [c for c in eng.columns if c != "msno"]
+        X_clean = X.drop(columns=[c for c in eng_cols if c in X.columns])
+        res = pd.merge(X_clean, eng, on="msno", how="left")
+        res[eng_cols] = res[eng_cols].fillna(0)
+        return res
+
+
+def build_engagement_features(user_logs: pd.DataFrame, cutoff_date: datetime) -> pd.DataFrame:
+    """
+    Compute listening engagement features over 30d/60d rolling windows from the cutoff.
+
+    Parameters
+    ----------
+    user_logs : pd.DataFrame
+        DataFrame of raw daily listening logs.
+    cutoff_date : datetime
+        Global cutoff boundary to prevent data leakage.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of extracted engagement trends per user.
+    """
     logs_hist = user_logs[user_logs["date"] <= cutoff_date].copy()
 
     logs_30d = logs_hist[logs_hist["date"] > (cutoff_date - pd.Timedelta(days=30))]
@@ -158,8 +316,26 @@ def engineer_features(
     transactions: pd.DataFrame,
     user_logs: pd.DataFrame,
     cutoff_date: datetime,
-):
-    """Legacy path - uses heuristic labels. For Kaggle labels see train_predict.py"""
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Legacy path using heuristic targets for early exploratory baselines.
+    
+    Parameters
+    ----------
+    members : pd.DataFrame
+        User demographic DataFrame.
+    transactions : pd.DataFrame
+        User transaction history DataFrame.
+    user_logs : pd.DataFrame
+        User logging history DataFrame.
+    cutoff_date : datetime
+        Temporal cutoff restricting future data leakage.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        Tuple of (X, y) containing features and labels.
+    """
     targets = prep_targets(transactions, cutoff_date)
     rfm = build_rfm_features(transactions, cutoff_date)
     eng = build_engagement_features(user_logs, cutoff_date)

@@ -2,7 +2,9 @@ import logging
 
 import pandas as pd
 import xgboost as xgb
-from sklearn.compose import ColumnTransformer
+from typing import Tuple, Dict, Any
+
+from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -11,30 +13,46 @@ from sklearn.metrics import (
     log_loss,
     roc_auc_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def get_splits(X, y):
-    X_clean = X.drop(columns=["msno"])
+def get_splits(X: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """
+    Split the dataset into training and testing sets, stratifying on the target.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        Features DataFrame containing 'msno' and predictive columns.
+    y : pd.DataFrame
+        Targets DataFrame containing 'is_churn'.
+
+    Returns
+    -------
+    Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
+        X_train, X_test, y_train, y_test arrays.
+    """
+    np.random.seed(42)
     y_clean = y["is_churn"]
     return train_test_split(
-        X_clean, y_clean, test_size=0.2, random_state=42, stratify=y_clean
+        X, y_clean, test_size=0.2, random_state=42, stratify=y_clean
     )
 
 
-def make_pipeline(X_train: pd.DataFrame):
-    """Prep pipeline - handles both numeric and categorical."""
-    numeric_features = X_train.select_dtypes(
-        include=["int64", "float64", "Int16", "Int32", "Int8", "float32"]
-    ).columns.tolist()
-    categorical_features = X_train.select_dtypes(
-        include=["object", "category"]
-    ).columns.tolist()
+def make_pipeline() -> ColumnTransformer:
+    """
+    Prepare the scikit-learn ColumnTransformer for preprocessing numeric and categorical features.
 
+    Returns
+    -------
+    ColumnTransformer
+        A preprocessor ready to scale and encode features. dynamically captures numeric/categorical upon fit.
+    """
     num_pipe = Pipeline(
         [
             ("imputer", SimpleImputer(strategy="median")),
@@ -42,28 +60,46 @@ def make_pipeline(X_train: pd.DataFrame):
         ]
     )
 
-    # could experiment with different strategies here
     cat_pipe = Pipeline(
         [
             ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
         ]
     )
 
     return ColumnTransformer(
         [
-            ("num", num_pipe, numeric_features),
-            ("cat", cat_pipe, categorical_features),
-        ]
+            ("num", num_pipe, make_column_selector(dtype_include=np.number, pattern="^(?!msno$).*$")),
+            ("cat", cat_pipe, make_column_selector(dtype_exclude=np.number, pattern="^(?!msno$).*$")),
+        ],
+        remainder="drop"
     )
 
+def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pipeline, prep: ColumnTransformer) -> Tuple[Pipeline, Pipeline]:
+    """
+    Train and tune baseline and optimized machine learning models (Logistic Regression, XGBoost).
 
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+    Parameters
+    ----------
+    X_train : pd.DataFrame
+        Training features.
+    y_train : pd.Series
+        Training labels.
+    feature_pipeline: Pipeline
+        The scikit-learn pipeline representing our custom feature mergers.
+    prep : ColumnTransformer
+        Column transformation pipeline for standardizing and encoding.
 
-def train_models(X_train, y_train, prep):
+    Returns
+    -------
+    Tuple[Pipeline, Pipeline]
+        Tuple of fitted (logistic_regression_pipeline, xgboost_pipeline).
+    """
+    np.random.seed(42)
     logger.info("Training Logistic Regression...")
     lr = Pipeline(
         [
+            ("features", feature_pipeline),
             ("preprocessor", prep),
             (
                 "classifier",
@@ -85,6 +121,7 @@ def train_models(X_train, y_train, prep):
 
     xg_pipe = Pipeline(
         [
+            ("features", feature_pipeline),
             ("preprocessor", prep),
             ("classifier", xgb_base),
         ]
@@ -108,7 +145,7 @@ def train_models(X_train, y_train, prep):
         cv=cv,
         verbose=1,
         random_state=42,
-        n_jobs=-1,
+        n_jobs=1,
     )
     
     xg_search.fit(X_train, y_train)
@@ -118,7 +155,26 @@ def train_models(X_train, y_train, prep):
     return lr, xg_search.best_estimator_
 
 
-def evaluate_model(model, X_test, y_test, name):
+def evaluate_model(model: Any, X_test: pd.DataFrame, y_test: pd.Series, name: str) -> Dict[str, float]:
+    """
+    Evaluate a fitted model on test data logging ROC-AUC, PR-AUC, LogLoss, and Brier-Score.
+
+    Parameters
+    ----------
+    model : Any
+        The fitted estimator pipeline with `predict_proba` access.
+    X_test : pd.DataFrame
+        Test features.
+    y_test : pd.Series
+        Test actual labels.
+    name : str
+        Name of model for standard output logging.
+
+    Returns
+    -------
+    Dict[str, float]
+        Dictionary mapped metric names to scores.
+    """
     proba = model.predict_proba(X_test)[:, 1].clip(1e-15, 1 - 1e-15)
 
     metrics = {
@@ -145,15 +201,22 @@ if __name__ == "__main__":
     from src.data_loader import load_all_data
     from src.features import engineer_features
 
+    from src.features import RFMFeatureTransformer, EngagementFeatureTransformer
+
     m, t, u = load_all_data()
 
     max_date = t["transaction_date"].max()
     cutoff = max_date - pd.Timedelta(days=30)
+    
+    feature_pipeline = Pipeline([
+        ('rfm', RFMFeatureTransformer(t, cutoff)),
+        ('eng', EngagementFeatureTransformer(u, cutoff))
+    ])
 
     X, y = engineer_features(m, t, u, cutoff)
     X_train, X_test, y_train, y_test = get_splits(X, y)
-    prep = make_pipeline(X_train)
+    prep = make_pipeline()
 
-    lr, xgb = train_models(X_train, y_train, prep)
+    lr, xgb_model = train_models(X_train, y_train, feature_pipeline, prep)
     evaluate_model(lr, X_test, y_test, "Logistic Regression")
-    evaluate_model(xgb, X_test, y_test, "XGBoost")
+    evaluate_model(xgb_model, X_test, y_test, "XGBoost")

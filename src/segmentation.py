@@ -6,10 +6,21 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
-def segment_users_kmeans(X: pd.DataFrame):
+def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
     """
-    K-Means clustering on RFM + engagement.
-    Groups users into personas: whales, power users, casual.
+    K-Means clustering on RFM + engagement features.
+    
+    Groups users into data-driven personas: high-value whales, power users, and casuals.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        Input DataFrame containing RFM and engagement features.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with added 'cluster' and 'persona' columns representing the segment.
     """
     print("running kmeans...")
     X_segment = X.copy()
@@ -61,8 +72,20 @@ def segment_users_kmeans(X: pd.DataFrame):
     return X_segment
 
 
-def baseline_segments(X: pd.DataFrame):
-    """Rule-based segments for comparison with ML approach."""
+def baseline_segments(X: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create rule-based segments for baseline comparison with the ML approach.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        Input DataFrame containing RFM features.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with added 'rule_segment' column.
+    """
     import numpy as np
     X_seg = X.copy()
     med = X_seg["monetary_total"].median()
