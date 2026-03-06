@@ -49,21 +49,24 @@ def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
         msno = row["msno"]
         reg_date = row["registration_init_time"]
 
-        num_trans = np.random.randint(1, 13)
         current_date = reg_date
 
-        for _ in range(num_trans):
+        # Simulate ongoing subscription until user churns or hits END_DATE
+        while current_date <= END_DATE:
             payment_method_id = np.random.choice([38, 39, 40, 41])
             payment_plan_days = 30
             plan_list_price = 149
             actual_amount_paid = plan_list_price
-            is_auto_renew = np.random.choice([0, 1], p=[0.3, 0.7])
+            
+            # 5% chance to churn each month
+            churn_prob = 0.05
+            is_cancel = np.random.choice([0, 1], p=[1 - churn_prob, churn_prob])
+            
+            # If they cancel, they typically disable auto-renew
+            is_auto_renew = 0 if is_cancel else np.random.choice([0, 1], p=[0.2, 0.8])
 
             transaction_date = current_date + timedelta(days=np.random.randint(-2, 2))
-            membership_expire_date = transaction_date + timedelta(
-                days=payment_plan_days
-            )
-            is_cancel = np.random.choice([0, 1], p=[0.95, 0.05])
+            membership_expire_date = transaction_date + timedelta(days=payment_plan_days)
 
             transactions.append(
                 {
