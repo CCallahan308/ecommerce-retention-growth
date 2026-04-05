@@ -1,30 +1,34 @@
-# Welcome to Ecommerce Retention Growth
+# Subscription Churn Prediction
 
-This repository contains the full end-to-end Machine Learning pipeline for predicting 30-day subscription churn.
+End-to-end ML pipeline for predicting 30-day subscription churn and optimizing retention spend.
 
-## 🌟 The Challenge
+## The problem
 
-Subscription services live and die by their retention rates. When customers leave, marketing teams often scramble to offer discounts. But **blanket discounts waste money** when given to users who would have stayed anyway.
+Subscription companies lose money when they offer blanket discounts to users who would have renewed anyway. The question is: can we predict who's actually at risk, and target our retention budget accordingly?
 
-Can we predict who is going to leave, *before* they leave, and segment them by value?
+## What this does
 
-## 🚀 Our Solution
+1. Predicts churn probability for each user (30-day window)
+2. Segments users by lifetime value using K-Means
+3. Simulates ROI of targeted vs. blanket retention campaigns
 
-By leveraging machine learning and customer segmentation, we target intervention budgets **strictly on users passing minimum ROI thresholds**.
+The goal is to spend retention dollars only where they matter.
 
-* Check out the [Data Engineering](data_engineering.md) section to see how we handled 400M+ event logs.
-* See our [Model Performance](modeling.md) for deeper insights into the XGBoost architecture.
-* Dive into our [Business Impact](business_impact.md) for the actual financial ROI.
+## Documentation
 
-### Project Layout
+- [Business Impact & ROI](business_impact.md) - Why this matters financially
+- [Data & Engineering](data_engineering.md) - How the pipeline works
+- [Model Performance](modeling.md) - Metrics and interpretation
 
-```text
-├── data/                  # Gitignored raw and processed CSVs
-├── docs/                  # MkDocs GitHub Pages documentation 
-├── figures/               # Automatically generated model evaluation charts
-├── notebooks/             # Exploratory analysis and business scenario modeling
-├── src/                   # Core Python application logic and pipelines
-├── tests/                 # Execution tests via PyTest
-├── mkdocs.yml             # Global MkDocs configuration
-└── README.md              # Root documentation
+## Project structure
+
+```
+├── data/          # raw and processed data (gitignored)
+├── docs/          # MkDocs site
+├── figures/       # plots and visualizations
+├── notebooks/     # exploratory analysis
+├── src/           # pipeline code
+├── tests/         # pytest
+├── Makefile
+└── pyproject.toml
 ```
