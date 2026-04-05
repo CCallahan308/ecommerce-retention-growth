@@ -32,3 +32,7 @@ kkbox-churn-prediction-challenge/
 
 # Session artifacts
 session-ses_378d.md
+
+# Debug files
+debug*.py
+*.debug.py
