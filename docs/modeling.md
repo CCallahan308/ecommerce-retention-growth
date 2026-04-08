@@ -1,6 +1,6 @@
 # Model Performance
 
-We developed several models to establish a robust baseline before pushing specialized gradient boosting frameworks.
+We developed several models to establish a solid baseline before pushing specialized gradient boosting frameworks.
 
 ## Performance Metrics
 

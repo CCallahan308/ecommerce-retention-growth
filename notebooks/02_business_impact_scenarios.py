@@ -21,7 +21,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Resolve project root so imports work whether you run from repo root or notebooks/
+# Find project root so imports work from both repo root and notebooks/
 PROJECT_ROOT = Path.cwd().resolve()
 if not (PROJECT_ROOT / "src").exists() and (PROJECT_ROOT.parent / "src").exists():
     PROJECT_ROOT = PROJECT_ROOT.parent
