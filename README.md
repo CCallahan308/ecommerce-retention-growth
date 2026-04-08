@@ -20,7 +20,7 @@
 
 Predicts which subscription users will churn in the next 30 days, segments them by value, and figures out where retention spend actually pays off.
 
-Built on the WSDM KKBox dataset — 400M+ daily logs and 21M billing records. The pipeline trains an XGBoost classifier, clusters users by lifetime value, and runs an ROI simulator to show where marketing budget gets the best return.
+Built on the WSDM KKBox dataset - 400M+ daily logs and 21M billing records. The pipeline trains an XGBoost classifier, clusters users by lifetime value, and runs an ROI simulator to show where marketing budget gets the best return.
 
 ## Results
 
@@ -49,9 +49,9 @@ Hyperparameter search covers tree depth, learning rate, column/row subsampling, 
 ### User segmentation
 
 K-Means on behavioral + revenue features splits users into:
-- **Whales** — high LTV, low churn risk
-- **Power Users** — frequent usage, medium value
-- **Casuals** — intermittent engagement
+- **Whales** - high LTV, low churn risk
+- **Power Users** - frequent usage, medium value
+- **Casuals** - intermittent engagement
 
 This matters because spending $10 to retain a $1000 LTV user makes sense. Spending $10 on someone worth $5 doesn't.
 
