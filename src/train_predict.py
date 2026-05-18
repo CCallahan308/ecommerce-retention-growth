@@ -131,7 +131,6 @@ def check_feature_drift(train_features: pd.DataFrame, predict_features: pd.DataF
 
 def main() -> None:
     t0 = time.perf_counter()
-    np.random.seed(42)
 
     logger.info("Loading datasets...")
     members, transactions, user_logs = load_all_data()
@@ -184,9 +183,9 @@ def main() -> None:
         print("PIPELINE VALIDATION")
         print(f"{'=' * 60}")
         
-        X_predict = predict_base.drop(columns=["msno"])
-        # predict_proba runs pipeline transformation
-        proba = xgb_model.predict_proba(X_predict)[:, 1]
+        # Pass predict_base with msno intact — the pipeline's ColumnTransformer
+        # uses a regex pattern to exclude msno from the feature matrix.
+        proba = xgb_model.predict_proba(predict_base)[:, 1]
 
         results = pd.DataFrame(
             {
@@ -213,7 +212,9 @@ def main() -> None:
         logger.info("No unlabeled users to predict on.")
 
     # also save train predictions for analysis
-    X_train_full = train_df.drop(columns=["is_churn", "msno"])
+    # Pass train_df (without is_churn) with msno intact — the pipeline's ColumnTransformer
+    # uses a regex pattern to exclude msno from the feature matrix.
+    X_train_full = train_df.drop(columns=["is_churn"])
     train_proba = xgb_model.predict_proba(X_train_full)[:, 1]
 
     train_results = pd.DataFrame(

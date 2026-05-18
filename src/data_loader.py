@@ -122,7 +122,7 @@ def load_user_logs(
     return df
 
 
-def grab_everything(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_all_data(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load all three primary datasets simultaneously.
 
@@ -142,7 +142,7 @@ def grab_everything(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFram
     return m, t, u
 
 
-load_all_data = grab_everything  # backwards compat
+grab_everything = load_all_data  # backwards compat alias
 
 
 if __name__ == "__main__":

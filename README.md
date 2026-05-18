@@ -104,7 +104,8 @@ jupyter notebook notebooks/02_business_impact_scenarios.ipynb
 ├── data/          # raw and processed data (gitignored)
 ├── docs/          # MkDocs site
 ├── figures/       # plots and visualizations
-├── notebooks/     exploratory analysis
+├── notebooks/     # exploratory analysis
+│   └── 02_business_impact_scenarios.ipynb  # (01_eda.ipynb not yet included)
 ├── src/           # pipeline code
 │   ├── data_loader.py
 │   ├── features.py
