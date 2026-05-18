@@ -2,18 +2,12 @@
 Feature engineering tests - checks for leakage and logic correctness.
 """
 
-import sys
 from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.features import (  # noqa: E402
+from src.features import (
     build_engagement_features,
     build_rfm_features,
     prep_targets,

@@ -37,7 +37,6 @@ def get_splits(X: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataF
     Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
         X_train, X_test, y_train, y_test arrays.
     """
-    np.random.seed(42)
     y_clean = y["is_churn"]
     return train_test_split(
         X, y_clean, test_size=0.2, random_state=42, stratify=y_clean
@@ -95,7 +94,6 @@ def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pi
     Tuple[Pipeline, Pipeline]
         Tuple of fitted (logistic_regression_pipeline, xgboost_pipeline).
     """
-    np.random.seed(42)
     logger.info("Training Logistic Regression...")
     lr = Pipeline(
         [
