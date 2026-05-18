@@ -1,9 +1,14 @@
+import logging
+
+import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+logger = logging.getLogger(__name__)
 
 
 def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
@@ -22,7 +27,7 @@ def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         DataFrame with added 'cluster' and 'persona' columns representing the segment.
     """
-    print("running kmeans...")
+    logger.info("Running KMeans segmentation...")
     X_segment = X.copy()
 
     cluster_features = [
@@ -51,7 +56,7 @@ def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
     pipeline = Pipeline(
         [
             ("preprocessor", prep),
-            ("kmeans", KMeans(n_clusters=4, random_state=42, n_init=10)),
+            ("kmeans", KMeans(n_clusters=3, random_state=42, n_init=10)),
         ]
     )
 
@@ -86,7 +91,6 @@ def baseline_segments(X: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         DataFrame with added 'rule_segment' column.
     """
-    import numpy as np
     X_seg = X.copy()
     med = X_seg["monetary_total"].median()
 

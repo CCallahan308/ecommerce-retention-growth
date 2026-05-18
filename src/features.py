@@ -1,10 +1,10 @@
 import logging
 import os
 from datetime import datetime
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-from typing import Optional
 from sklearn.base import BaseEstimator, TransformerMixin
 
 logger = logging.getLogger(__name__)

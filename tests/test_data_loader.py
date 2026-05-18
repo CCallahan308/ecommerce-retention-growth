@@ -3,17 +3,11 @@ Data loader tests - schema and handling of edge cases.
 """
 
 import os
-import sys
-from pathlib import Path
 
 import pandas as pd
 import pytest
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.data_loader import load_members, load_transactions  # noqa: E402
+from src.data_loader import load_members, load_transactions
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
