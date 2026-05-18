@@ -5,7 +5,7 @@ description = "Subscription Churn Prediction & Retention ROI"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "numpy==2.3.*",
+    "numpy>=2.0,<3.0",
     "pandas>=2.0.0",
     "scikit-learn>=1.3.0",
     "xgboost>=2.0.0",
@@ -29,9 +29,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
-
-[tool.ruff]
-line-length = 88
 
 [tool.ruff]
 line-length = 88
