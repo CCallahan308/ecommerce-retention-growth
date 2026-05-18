@@ -1,38 +1,45 @@
-# Virtual Environments
-.venv/
-venv/
-env/
-ENV/
-
-# Python Cache
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+*.egg
+build/
+dist/
 
-# Data and Artifacts (NEVER commit raw data to GitHub)
-data/raw/*
-data/processed/*
-data/features/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/features/.gitkeep
-
-# Large Kaggle competition archives (30GB+)
-kkbox-churn-prediction-challenge/
-
-# Figures — KEEP committed so README images render on GitHub
-# (only ignore .gitkeep placeholder)
-
-# Jupyter Checkpoints
+# Jupyter
 .ipynb_checkpoints/
 
-# Session artifacts
-session-ses_378d.md
+# IDE
+.vscode/
+.idea/
+*.swp
 
-# Debug files
-debug*.py
-*.debug.py
+# OS
+.DS_Store
+Thumbs.db
+
+# Project data (large or sensitive)
+data/raw/
+data/processed/
+data/external/
+*.parquet
+*.feather
+
+# MkDocs build output
+site/
+
+# Test/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Local env vars
+.env
+.env.local
