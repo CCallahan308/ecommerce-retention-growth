@@ -1,6 +1,8 @@
 import logging
 import os
+import shutil
 import subprocess
+from pathlib import Path
 
 import py7zr
 
@@ -68,17 +70,28 @@ def main():
         if os.path.exists(archive_path) and not os.path.exists(final_path):
             extract_7z(archive_path, DATA_DIR)
 
-            # The extracted file will have the version suffix, let's rename it to match our data loader
-            extracted_file = os.path.join(DATA_DIR, csv_name)
-            if os.path.exists(extracted_file):
-                os.rename(extracted_file, final_path)
-                logger.info(f"Renamed {extracted_file} to {final_path}")
+            # The v2 refresh archives extract into a nested folder
+            # (e.g. data/churn_comp_refresh/), so search recursively rather than
+            # assuming a top-level file, then move to the data_loader's expected name.
+            matches = list(Path(DATA_DIR).glob(f"**/{csv_name}"))
+            if matches:
+                shutil.move(str(matches[0]), final_path)
+                logger.info(f"Moved {matches[0]} to {final_path}")
+            else:
+                logger.error(f"Could not find extracted {csv_name} under {DATA_DIR}")
 
             # Clean up the .7z archive to save disk space
             os.remove(archive_path)
 
+    # Remove any nested extraction folders left behind by the archives.
+    nested = os.path.join(DATA_DIR, "data")
+    if os.path.isdir(nested):
+        shutil.rmtree(nested)
+
     logger.info(
-        "Real Kaggle data downloaded and extracted! Run 'python src/train_predict.py' to train and predict."
+        "Real Kaggle data downloaded and extracted! "
+        "For limited RAM, run src/sample_kaggle_data.py next, then "
+        "'python src/train_predict.py' to train and predict."
     )
 
 

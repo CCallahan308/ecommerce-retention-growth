@@ -4,6 +4,8 @@ import pandas as pd
 import xgboost as xgb
 from typing import Tuple, Dict, Any
 
+from sklearn.base import clone
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -17,6 +19,14 @@ from sklearn.model_selection import train_test_split, RandomizedSearchCV, Strati
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 import numpy as np
+
+from src.config import (
+    CHURN_WINDOW_DAYS,
+    CV_FOLDS,
+    RANDOM_STATE,
+    SEARCH_ITERATIONS,
+    TEST_SIZE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +49,7 @@ def get_splits(X: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataF
     """
     y_clean = y["is_churn"]
     return train_test_split(
-        X, y_clean, test_size=0.2, random_state=42, stratify=y_clean
+        X, y_clean, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y_clean
     )
 
 
@@ -102,7 +112,7 @@ def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pi
             (
                 "classifier",
                 LogisticRegression(
-                    class_weight="balanced", random_state=42, max_iter=1000
+                    class_weight="balanced", random_state=RANDOM_STATE, max_iter=1000
                 ),
             ),
         ]
@@ -114,7 +124,7 @@ def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pi
     xgb_base = xgb.XGBClassifier(
         eval_metric="logloss",
         scale_pos_weight=(len(y_train) - y_train.sum()) / y_train.sum(),
-        random_state=42,
+        random_state=RANDOM_STATE,
     )
 
     xg_pipe = Pipeline(
@@ -133,16 +143,16 @@ def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pi
         "classifier__subsample": [0.8, 1.0],
     }
 
-    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+    cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
 
     xg_search = RandomizedSearchCV(
         estimator=xg_pipe,
         param_distributions=param_distributions,
-        n_iter=5, # Keep it small for reasonable runtime
+        n_iter=SEARCH_ITERATIONS,  # kept small for reasonable runtime
         scoring="neg_log_loss",
         cv=cv,
         verbose=1,
-        random_state=42,
+        random_state=RANDOM_STATE,
         n_jobs=1,
     )
     
@@ -151,6 +161,44 @@ def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pi
     logger.info(f"Best XGBoost params: {xg_search.best_params_}")
     
     return lr, xg_search.best_estimator_
+
+
+def calibrate_model(
+    model: Pipeline,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    method: str = "sigmoid",
+) -> CalibratedClassifierCV:
+    """
+    Calibrate a model's probabilities so they can be used as expected values
+    downstream (e.g. multiplied by lifetime value in the ROI simulator).
+
+    The estimator is cloned and refit inside ``CalibratedClassifierCV`` over
+    ``CV_FOLDS`` cross-validation folds, so calibration never sees the data it
+    was fit on (no leakage). Platt scaling (``sigmoid``) is the default because
+    it is stable on the modest, imbalanced sample sizes here; isotonic needs
+    more data to avoid overfitting the calibration curve.
+
+    Parameters
+    ----------
+    model : Pipeline
+        A fitted (or unfitted) estimator pipeline to calibrate; it is cloned.
+    X_train : pd.DataFrame
+        Training features.
+    y_train : pd.Series
+        Training labels.
+    method : str
+        Calibration method passed to scikit-learn ("sigmoid" or "isotonic").
+
+    Returns
+    -------
+    CalibratedClassifierCV
+        A fitted, calibrated classifier with the same interface.
+    """
+    logger.info("Calibrating probabilities (%s, %d-fold)...", method, CV_FOLDS)
+    calibrated = CalibratedClassifierCV(clone(model), method=method, cv=CV_FOLDS)
+    calibrated.fit(X_train, y_train)
+    return calibrated
 
 
 def evaluate_model(model: Any, X_test: pd.DataFrame, y_test: pd.Series, name: str) -> Dict[str, float]:
@@ -204,8 +252,8 @@ if __name__ == "__main__":
     m, t, u = load_all_data()
 
     max_date = t["transaction_date"].max()
-    cutoff = max_date - pd.Timedelta(days=30)
-    
+    cutoff = max_date - pd.Timedelta(days=CHURN_WINDOW_DAYS)
+
     feature_pipeline = Pipeline([
         ('rfm', RFMFeatureTransformer(t, cutoff)),
         ('eng', EngagementFeatureTransformer(u, cutoff))

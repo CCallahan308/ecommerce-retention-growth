@@ -23,10 +23,10 @@ The goal is to spend retention dollars only where they matter.
 ## Project structure
 
 ```
-├── data/          # raw and processed data (gitignored)
+├── data/          # raw and processed data + saved model (gitignored)
 ├── docs/          # MkDocs site
-├── figures/       # plots and visualizations
-├── notebooks/     # exploratory analysis
+├── figures/       # generated plots
+├── reports/       # metrics.json model card (reproducible)
 ├── src/           # pipeline code
 ├── tests/         # pytest
 ├── Makefile
