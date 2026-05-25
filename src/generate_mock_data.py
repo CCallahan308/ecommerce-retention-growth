@@ -2,24 +2,33 @@
 Mock data generator - use this instead of downloading the big Kaggle files.
 """
 
+import logging
 import os
+import sys
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 
-NUM_USERS = 5000
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from src.config import CHURN_WINDOW_DAYS, MOCK_NUM_USERS, RANDOM_STATE
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+
 START_DATE = datetime(2023, 1, 1)
 END_DATE = datetime(2024, 1, 1)
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
 
 
 def generate_members(num_users: int) -> pd.DataFrame:
-    np.random.seed(42)
+    np.random.seed(RANDOM_STATE)
     user_ids = [f"U{str(i).zfill(5)}" for i in range(num_users)]
     cities = np.random.choice(range(1, 23), size=num_users)
     bd = np.random.normal(28, 10, size=num_users).astype(int)
-    bd = np.where((bd < 10) | (bd > 90), 0, bd)  # toss absurd ages
+    # Clip implausible ages to 0, matching the KKBox sentinel for unknown age.
+    bd = np.where((bd < 10) | (bd > 90), 0, bd)
     genders = np.random.choice(
         ["male", "female", "unknown"], size=num_users, p=[0.4, 0.4, 0.2]
     )
@@ -42,7 +51,7 @@ def generate_members(num_users: int) -> pd.DataFrame:
 
 
 def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
-    np.random.seed(42)
+    np.random.seed(RANDOM_STATE)
     transactions = []
 
     for _, row in members_df.iterrows():
@@ -91,10 +100,10 @@ def generate_transactions(members_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate_user_logs(members_df: pd.DataFrame) -> pd.DataFrame:
-    np.random.seed(42)
+    np.random.seed(RANDOM_STATE)
     logs = []
 
-    active_users = members_df.sample(frac=0.8, random_state=42)["msno"]
+    active_users = members_df.sample(frac=0.8, random_state=RANDOM_STATE)["msno"]
 
     for msno in active_users:
         num_log_days = np.random.randint(10, 50)
@@ -130,29 +139,31 @@ def generate_user_logs(members_df: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    print(f"Generating data for {NUM_USERS} users...")
-    members = generate_members(NUM_USERS)
-    print("transactions...")
+    logger.info("Generating data for %d users...", MOCK_NUM_USERS)
+    members = generate_members(MOCK_NUM_USERS)
+    logger.info("Generating transactions...")
     transactions = generate_transactions(members)
-    print("user logs...")
+    logger.info("Generating user logs...")
     user_logs = generate_user_logs(members)
 
     members.to_csv(os.path.join(DATA_DIR, "members.csv"), index=False)
     transactions.to_csv(os.path.join(DATA_DIR, "transactions.csv"), index=False)
     user_logs.to_csv(os.path.join(DATA_DIR, "user_logs.csv"), index=False)
 
+    # Generate heuristic churn labels (train.csv) so the pipeline can run
+    # end-to-end on synthetic data. This is best-effort: the raw CSVs above are
+    # already written, and a failure here should warn rather than abort.
     try:
-        import sys
-        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from src.features import prep_targets
+
         max_date = transactions["transaction_date"].max()
-        cutoff = max_date - pd.Timedelta(days=30)
+        cutoff = max_date - pd.Timedelta(days=CHURN_WINDOW_DAYS)
         train_labels = prep_targets(transactions, pd.Timestamp(cutoff))
         train_labels.to_csv(os.path.join(DATA_DIR, "train.csv"), index=False)
-    except Exception as e:
-        print(f"Failed to generate train.csv: {e}")
+    except Exception:
+        logger.exception("Failed to generate train.csv from synthetic transactions")
 
-    print(f"Done - files in {DATA_DIR}")
+    logger.info("Done - files in %s", DATA_DIR)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from src.features import (
+    active_at_cutoff_msnos,
     build_engagement_features,
     build_rfm_features,
     prep_targets,
@@ -110,6 +111,30 @@ def test_prep_targets_mid_window_cancel():
     # gap = 2024-01-11 - 2023-12-10 = 32 days -> churn
     targets2 = prep_targets(data2, cutoff)
     assert targets2.loc[targets2["msno"] == "U004", "is_churn"].values[0] == 1
+
+
+def test_active_at_cutoff_excludes_dormant():
+    """Only users whose membership is recent at the cutoff are scorable."""
+    cutoff = pd.to_datetime("2023-12-01")
+    data = pd.DataFrame(
+        {
+            "msno": ["ACTIVE", "DORMANT"],
+            "transaction_date": [
+                pd.to_datetime("2023-11-10"),
+                pd.to_datetime("2023-06-01"),
+            ],
+            "membership_expire_date": [
+                pd.to_datetime("2023-12-10"),  # active well past the cutoff
+                pd.to_datetime("2023-07-01"),  # expired ~5 months before cutoff
+            ],
+            "actual_amount_paid": [100.0, 100.0],
+            "is_auto_renew": [1, 0],
+            "is_cancel": [0, 0],
+        }
+    )
+    active = active_at_cutoff_msnos(data, cutoff)
+    assert "ACTIVE" in active
+    assert "DORMANT" not in active
 
 
 def test_rfm_no_leakage(mock_transactions):

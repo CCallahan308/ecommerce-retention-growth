@@ -7,14 +7,77 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from src.config import CHURN_WINDOW_DAYS
+
 logger = logging.getLogger(__name__)
+
+
+def last_transaction_at_cutoff(
+    transactions: pd.DataFrame, cutoff_date: datetime
+) -> pd.DataFrame:
+    """
+    Most recent transaction on or before the cutoff for each user, restricted to
+    users who are still *active* at the cutoff: their membership has not been
+    expired for more than ``CHURN_WINDOW_DAYS`` (i.e. they are subscribed or in
+    the grace period). This is the only population for which a forward-looking
+    churn label is meaningful, and therefore the only valid scoring cohort.
+
+    Parameters
+    ----------
+    transactions : pd.DataFrame
+        DataFrame containing transaction history.
+    cutoff_date : datetime
+        The cutoff date; nothing after it is consulted.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per active user with their last pre-cutoff transaction (empty
+        DataFrame if no user qualifies).
+    """
+    tx_before = transactions[transactions["transaction_date"] <= cutoff_date].copy()
+    if tx_before.empty:
+        return tx_before
+
+    tx_before = tx_before.sort_values(
+        ["msno", "transaction_date", "membership_expire_date", "is_cancel"],
+        ascending=[True, True, True, True],
+    )
+    last_tx = tx_before.groupby("msno").last().reset_index()
+
+    # Drop users whose membership expired more than CHURN_WINDOW_DAYS before the
+    # cutoff: they have definitively churned in the past and are not part of the
+    # active prediction cohort.
+    grace_period_start = cutoff_date - pd.Timedelta(days=CHURN_WINDOW_DAYS)
+    return last_tx[last_tx["membership_expire_date"] > grace_period_start].copy()
+
+
+def active_at_cutoff_msnos(transactions: pd.DataFrame, cutoff_date: datetime) -> set:
+    """
+    Set of users active (subscribed or in grace period) at the cutoff. Use this
+    to keep training and scoring on the same population — scoring long-dormant
+    users the model never saw produces degenerate predictions.
+
+    Parameters
+    ----------
+    transactions : pd.DataFrame
+        DataFrame containing transaction history.
+    cutoff_date : datetime
+        The cutoff date; nothing after it is consulted.
+
+    Returns
+    -------
+    set
+        ``msno`` values of users active at the cutoff.
+    """
+    return set(last_transaction_at_cutoff(transactions, cutoff_date)["msno"])
 
 
 def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFrame:
     """
-    Generates legacy heuristic churn targets (Python port of KKBox's Scala churn labeler).
-    Filters exclusively for active users at the cutoff date to prevent data leakage and 
-    artificial class imbalance.
+    Generates heuristic churn targets (Python port of KKBox's Scala churn labeler).
+    Labels only users active at the cutoff date; a user is churned if they fail
+    to renew within ``CHURN_WINDOW_DAYS`` of their membership expiring.
 
     Parameters
     ----------
@@ -28,22 +91,7 @@ def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFr
     pd.DataFrame
         DataFrame with 'msno' and 'is_churn' target labels indicating user churn status.
     """
-    tx_before = transactions[transactions["transaction_date"] <= cutoff_date].copy()
-    if tx_before.empty:
-        return pd.DataFrame(columns=["msno", "is_churn"])
-
-    tx_before = tx_before.sort_values(
-        ["msno", "transaction_date", "membership_expire_date", "is_cancel"],
-        ascending=[True, True, True, True],
-    )
-    last_tx = tx_before.groupby("msno").last().reset_index()
-
-    # FILTER: Only target users who are active (or in their 30-day grace period) at the cutoff date.
-    # Users whose membership expired > 30 days before the cutoff have definitively churned in the past
-    # and should not be included in the active prediction cohort.
-    grace_period_start = cutoff_date - pd.Timedelta(days=30)
-    last_tx = last_tx[last_tx["membership_expire_date"] > grace_period_start].copy()
-    
+    last_tx = last_transaction_at_cutoff(transactions, cutoff_date)
     if last_tx.empty:
         return pd.DataFrame(columns=["msno", "is_churn"])
 
@@ -78,7 +126,9 @@ def prep_targets(transactions: pd.DataFrame, cutoff_date: datetime) -> pd.DataFr
     tx_merged["gap"] = (tx_merged["transaction_date"] - tx_merged["effective_expire"]).dt.days
     
     first_non_cancel = tx_merged[tx_merged["is_cancel"] == 0].groupby("msno").first().reset_index()
-    first_non_cancel["churn_update"] = (first_non_cancel["gap"] >= 30).astype(int)
+    first_non_cancel["churn_update"] = (
+        first_non_cancel["gap"] >= CHURN_WINDOW_DAYS
+    ).astype(int)
     
     user_churn = user_churn.merge(
         first_non_cancel[["msno", "churn_update"]], 
@@ -275,7 +325,6 @@ def build_engagement_features(user_logs: pd.DataFrame, cutoff_date: datetime) ->
         .reset_index()
     )
 
-    # TODO: could add 90d window for longer-term patterns
     agg_60d = (
         logs_60d.groupby("msno")
         .agg(total_secs_60d=("total_secs", "sum"), active_days_60d=("date", "nunique"))
@@ -336,9 +385,9 @@ if __name__ == "__main__":
 
     m, t, u = load_all_data()
 
-    # Set cutoff dynamically: 30 days before latest transaction
+    # Set cutoff dynamically: CHURN_WINDOW_DAYS before latest transaction
     max_date = t["transaction_date"].max()
-    CUTOFF = max_date - pd.Timedelta(days=30)
+    CUTOFF = max_date - pd.Timedelta(days=CHURN_WINDOW_DAYS)
     logger.info(f"Engineering features with cutoff: {CUTOFF}")
 
     X, y = engineer_features(m, t, u, CUTOFF)

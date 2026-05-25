@@ -89,7 +89,11 @@ def load_transactions(
 
     bad = df["transaction_date"] > df["membership_expire_date"]
     if bad.any():
-        logger.warning(f"Dropping {bad.sum()} rows with wonky dates")
+        logger.warning(
+            "Dropping %d transactions where transaction_date is after "
+            "membership_expire_date (invalid ordering)",
+            bad.sum(),
+        )
         df = df[~bad].copy()  # type: ignore
 
     return df  # type: ignore
@@ -140,9 +144,6 @@ def load_all_data(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFrame,
     t = load_transactions(os.path.join(data_dir, "transactions.csv"))
     u = load_user_logs(os.path.join(data_dir, "user_logs.csv"))
     return m, t, u
-
-
-grab_everything = load_all_data  # backwards compat alias
 
 
 if __name__ == "__main__":

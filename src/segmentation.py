@@ -8,6 +8,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from src.config import CHURN_WINDOW_DAYS, N_CLUSTERS, RANDOM_STATE
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +58,7 @@ def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
     pipeline = Pipeline(
         [
             ("preprocessor", prep),
-            ("kmeans", KMeans(n_clusters=3, random_state=42, n_init=10)),
+            ("kmeans", KMeans(n_clusters=N_CLUSTERS, random_state=RANDOM_STATE, n_init=10)),
         ]
     )
 
@@ -66,7 +68,7 @@ def segment_users_kmeans(X: pd.DataFrame) -> pd.DataFrame:
     high_val = centroids["monetary_total"].idxmax()
     high_eng = centroids["total_secs_60d"].idxmax()
 
-    def label(c):
+    def label(c: int) -> str:
         if c == high_val:
             return "High-Value Whales"
         elif c == high_eng:
@@ -121,7 +123,7 @@ if __name__ == "__main__":
     m, t, u = load_all_data()
 
     max_date = t["transaction_date"].max()
-    cutoff = max_date - pd.Timedelta(days=30)
+    cutoff = max_date - pd.Timedelta(days=CHURN_WINDOW_DAYS)
 
     X, y = engineer_features(m, t, u, cutoff)
 

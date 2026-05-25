@@ -20,6 +20,11 @@ dist/
 .idea/
 *.swp
 
+# Local tooling config (not part of the project)
+.claude/
+CLAUDE.md
+INTERVIEW_PREP.md
+
 # OS
 .DS_Store
 Thumbs.db
