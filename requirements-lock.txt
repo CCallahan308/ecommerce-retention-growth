@@ -370,7 +370,7 @@ texttable==1.7.0
     # via py7zr
 threadpoolctl==3.6.0
     # via scikit-learn
-tinycss2==1.4.0
+tinycss2==1.5.1
     # via bleach
 tornado==6.5.5
     # via
