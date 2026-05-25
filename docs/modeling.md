@@ -1,36 +1,54 @@
 # Model Performance
 
-We developed several models to establish a solid baseline before pushing specialized gradient boosting frameworks.
+We establish a logistic-regression baseline before reaching for gradient boosting,
+so the complex model has to earn its place.
+
+## Validation strategy
+
+A stratified **80/20 train/test split** is held out up front; hyperparameters are
+tuned with stratified **3-fold cross-validation inside the training split**. All
+metrics below are on the held-out **test** split.
 
 ## Performance Metrics
 
-*Evaluated on an 80/20 holdout of 484k engineered, labeled users.*
+> Real **KKBox** data, held-out test split (20%) of a fixed-seed **50,000-user
+> labeled sample** (43,999 with features, churn rate 8.9%, cutoff 2017-03-01).
+> Written to `reports/metrics.json` on every run. A 50K sample is used for memory
+> reasons; `make data && make train` runs the same pipeline on synthetic data for a
+> no-download check.
 
-| Metric | Logistic Regression | XGBoost | Improvement |
-| :--- | :--- | :--- | :--- |
-| **LogLoss** | 0.6153 | **0.4802** | *22.0% better* |
-| **ROC-AUC** | 0.7264 | **0.8411** | *15.8% better* |
-| **PR-AUC**  | 0.2749 | **0.5157** | *87.6% better* |
-| **Brier Score**| 0.2065 | **0.1608** | *22.1% better* |
+| Metric  | LR    | XGB   | XGB-cal   |
+| :------ | :---: | :---: | :-------: |
+| ROC-AUC | 0.748 | 0.783 | **0.788** |
+| PR-AUC  | 0.265 | 0.412 | **0.416** |
+| LogLoss | 0.601 | 0.390 | **0.243** |
+| Brier   | 0.198 | 0.123 | **0.067** |
 
-*Note: LogLoss is the official Kaggle competition metric.*
+_LR = logistic-regression baseline · XGB = tuned XGBoost · XGB-cal = calibrated (shipped)._
+
+XGBoost beats the baseline on every metric; the gap is largest on PR-AUC (+56%), the
+metric that matters under class imbalance.
+
+## Probability calibration
+
+Because the [ROI simulator](business_impact.md) multiplies probabilities by lifetime
+value, they must be calibrated, not merely well-ranked. Platt scaling
+(`CalibratedClassifierCV`) cut **Brier 0.123 → 0.067** and **LogLoss 0.390 → 0.243**
+on the test split while leaving ROC-AUC unchanged — exactly what calibration should do.
 
 ## Interpretability
 
-We rely on **SHAP** (SHapley Additive exPlanations) to guarantee that our model isn’t just a black box. This is crucial for stakeholder trust.
-
-### Global Drivers of Churn
+We use **SHAP** (SHapley Additive exPlanations) so the model is not a black box.
 
 ![SHAP Summary](figures/shap_summary.png)
 
-High importance features include:
-
-- `days_since_last_login`: Strongest predictor of impending cancellation.
-- `auto_renew_status`: Users manually renewing have entirely different behavioral patterns.
-- `monthly_listening_hours`: A primary proxy for product value realizion.
+The model consumes engineered RFM and engagement features — `recency`, `frequency`,
+`monetary_total`, `auto_renew_ratio`, `total_secs_60d`, `secs_trend`, and
+`tenure_days`. Recency and auto-renew behavior are typically the strongest churn
+signals; see the plot above for the ranking on the current run.
 
 ## Confusion Matrix
 
-By thresholding the predicted probability at `0.5`, we can observe the classification balance.
+Thresholding the predicted probability at `0.5` on the held-out test split:
 
 ![Confusion Matrix](figures/confusion_matrix.png)

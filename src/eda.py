@@ -5,8 +5,10 @@ EDA plots for the subscription dataset.
 import logging
 import os
 import sys
+from typing import Optional
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,7 +38,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 FIG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "figures")
 
 
-def plot_registration_cohorts(members_df, save_path=None):
+def plot_registration_cohorts(
+    members_df: pd.DataFrame, save_path: Optional[str] = None
+) -> None:
     logger.info("Plotting registration cohorts")
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -63,7 +67,9 @@ def plot_registration_cohorts(members_df, save_path=None):
     plt.close()
 
 
-def plot_transaction_trends(transactions_df, save_path=None):
+def plot_transaction_trends(
+    transactions_df: pd.DataFrame, save_path: Optional[str] = None
+) -> None:
     logger.info("Plotting transaction breakdown")
     fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -103,7 +109,9 @@ def plot_transaction_trends(transactions_df, save_path=None):
     plt.close()
 
 
-def plot_usage_intensity(user_logs_df, save_path=None):
+def plot_usage_intensity(
+    user_logs_df: pd.DataFrame, save_path: Optional[str] = None
+) -> None:
     logger.info("Plotting usage distribution")
     fig, ax = plt.subplots(figsize=(10, 6))
 

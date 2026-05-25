@@ -1,4 +1,4 @@
-.PHONY: data lint test train
+.PHONY: data lint test train figures
 
 data:
 	python src/generate_mock_data.py
@@ -11,3 +11,7 @@ test:
 
 train:
 	python src/train_predict.py
+
+figures:
+	python src/eda.py
+	python src/business_impact.py
