@@ -1,64 +1,82 @@
 """
-Sample full Kaggle data down to N users.
-Filters transactions and logs to only include sampled users.
+Sample the full KKBox dataset down to a fixed cohort of labeled users.
+
+This is the reproducible bridge between ``download_real_data.py`` and ``make
+train`` when you cannot fit the full ~30GB dataset in memory. It samples ``msno``
+values from the (small) ``train.csv`` labels with a fixed seed, then filters
+members / transactions / user_logs / train to that cohort **in chunks**, so the
+multi-GB files are never loaded whole.
+
+Run:
+    python src/sample_kaggle_data.py            # default KAGGLE_SAMPLE_SIZE users
 """
 
+import logging
 import os
 import sys
 
 import pandas as pd
-from tqdm import tqdm
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from src.config import KAGGLE_SAMPLE_SIZE, RANDOM_STATE
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
-SAMPLE_SIZE = 50_000
+LARGE_FILE_CHUNK = 1_000_000
 
 
-def sample_data(data_dir: str = DATA_DIR, sample_size: int = SAMPLE_SIZE):
-    """Sample all raw CSVs to a fixed user cohort."""
-    members_path = os.path.join(data_dir, "members.csv")
-    transactions_path = os.path.join(data_dir, "transactions.csv")
-    user_logs_path = os.path.join(data_dir, "user_logs.csv")
+def _filter_in_chunks(path: str, keep: set, chunk_size: int) -> None:
+    """Rewrite ``path`` in place keeping only rows whose msno is in ``keep``."""
+    if not os.path.exists(path):
+        logger.warning("%s not found; skipping", os.path.basename(path))
+        return
+    tmp = path + ".tmp"
+    if os.path.exists(tmp):
+        os.remove(tmp)
 
-    try:
-        members_df = pd.read_csv(members_path)
-    except FileNotFoundError:
-        print(
-            "members.csv not found. Run extract_kaggle_data.py or generate_mock_data.py first."
+    kept, first = 0, True
+    for chunk in pd.read_csv(path, chunksize=chunk_size, dtype={"msno": "string"}):
+        filtered = chunk[chunk["msno"].isin(keep)]
+        filtered.to_csv(tmp, mode="a", header=first, index=False)
+        kept += len(filtered)
+        first = False
+    os.replace(tmp, path)
+    logger.info("%s: kept %s rows", os.path.basename(path), f"{kept:,}")
+
+
+def sample_data(
+    data_dir: str = DATA_DIR,
+    sample_size: int = KAGGLE_SAMPLE_SIZE,
+    seed: int = RANDOM_STATE,
+) -> None:
+    """Sample a fixed cohort of labeled users and filter every raw file to it."""
+    train_path = os.path.join(data_dir, "train.csv")
+    if not os.path.exists(train_path):
+        logger.error(
+            "train.csv not found in %s. Run download_real_data.py (or "
+            "extract_kaggle_data.py) first.",
+            data_dir,
         )
         sys.exit(1)
 
-    sampled_members = members_df.sample(
-        n=min(sample_size, len(members_df)), random_state=42
+    labels = pd.read_csv(train_path, dtype={"msno": "string", "is_churn": "Int8"})
+    sample = labels.sample(n=min(sample_size, len(labels)), random_state=seed)
+    keep = set(sample["msno"])
+    sample.to_csv(train_path, index=False)
+    logger.info(
+        "Sampled %s labeled users (seed=%d); churn rate %.3f",
+        f"{len(sample):,}",
+        seed,
+        sample["is_churn"].mean(),
     )
-    valid_users = set(sampled_members["msno"])
-    sampled_members.to_csv(members_path, index=False)
-    print(f"Kept {len(valid_users)} users")
 
-    # Filter transactions in chunks
-    print("Filtering transactions...")
-    chunk_size = 1_000_000
-    temp_trans = os.path.join(data_dir, "transactions_sampled.csv")
-    first_chunk = True
-
-    for chunk in tqdm(pd.read_csv(transactions_path, chunksize=chunk_size)):
-        filtered_chunk = chunk[chunk["msno"].isin(valid_users)]
-        filtered_chunk.to_csv(temp_trans, mode="a", header=first_chunk, index=False)
-        first_chunk = False
-
-    os.replace(temp_trans, transactions_path)
-
-    # Filter user logs in chunks (the 30GB file)
-    print("Filtering user logs (this may take a few minutes)...")
-    temp_logs = os.path.join(data_dir, "user_logs_sampled.csv")
-    first_chunk = True
-
-    for chunk in tqdm(pd.read_csv(user_logs_path, chunksize=chunk_size)):
-        filtered_chunk = chunk[chunk["msno"].isin(valid_users)]
-        filtered_chunk.to_csv(temp_logs, mode="a", header=first_chunk, index=False)
-        first_chunk = False
-
-    os.replace(temp_logs, user_logs_path)
-    print("Sampling complete.")
+    _filter_in_chunks(os.path.join(data_dir, "members.csv"), keep, 500_000)
+    _filter_in_chunks(os.path.join(data_dir, "transactions.csv"), keep, 500_000)
+    _filter_in_chunks(os.path.join(data_dir, "user_logs.csv"), keep, LARGE_FILE_CHUNK)
+    logger.info("Sampling complete.")
 
 
 if __name__ == "__main__":
