@@ -21,7 +21,6 @@ import logging
 import os
 import shutil
 import sys
-from typing import Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -81,7 +80,7 @@ def _save(fig_name: str) -> None:
 def plot_confusion_matrix(y_test: pd.Series, test_probs: np.ndarray) -> None:
     """Confusion matrix at the 0.5 threshold, on the held-out test split."""
     cm = confusion_matrix(y_test, test_probs > 0.5)
-    fig, ax = plt.subplots(figsize=(8, 7))
+    _fig, ax = plt.subplots(figsize=(8, 7))
     ConfusionMatrixDisplay(cm, display_labels=["Stayed", "Churned"]).plot(
         cmap="GnBu", ax=ax, values_format="d", colorbar=False
     )
@@ -191,7 +190,7 @@ def build_test_segments(
     y_test: pd.Series,
     feature_pipeline: Pipeline,
     xgb_model: Pipeline,
-) -> Tuple[pd.DataFrame, np.ndarray]:
+) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Segment the full cohort (clustering is unsupervised) on engineered features,
     then keep only the held-out test users and attach their predicted churn

@@ -12,7 +12,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 import joblib
 import pandas as pd
@@ -52,7 +52,7 @@ def log_section(title: str) -> None:
     logger.info("=" * 60)
 
 
-def load_train_labels(filepath: Optional[str] = None) -> pd.DataFrame:
+def load_train_labels(filepath: str | None = None) -> pd.DataFrame:
     """
     Load training labels (msno, is_churn).
 
@@ -193,7 +193,7 @@ def score_cohort(model: Any, base: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def write_model_card(path: str, metadata: Dict[str, Any]) -> None:
+def write_model_card(path: str, metadata: dict[str, Any]) -> None:
     """Write run metadata + metrics to a JSON model card (committed evidence)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -325,9 +325,9 @@ def main() -> None:
             "data": {
                 "source": data_source,
                 "feature_cutoff": str(cutoff),
-                "n_labeled": int(len(train_df)),
-                "n_train": int(len(X_train)),
-                "n_test": int(len(X_test)),
+                "n_labeled": len(train_df),
+                "n_train": len(X_train),
+                "n_test": len(X_test),
                 "churn_rate": round(float(train_labels["is_churn"].mean()), 4),
             },
             "best_xgboost_params": {

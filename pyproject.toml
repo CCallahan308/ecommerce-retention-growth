@@ -35,6 +35,12 @@ packages = ["src"]
 [tool.ruff]
 line-length = 88
 
+# ruff 0.16 widened its default rule set; mechanical fixes were applied in code.
+# Deferred on judgment: naive datetimes here are intentional — the mock-data
+# generator and feature fixtures mirror the naive timestamps in the KKBox logs.
+[tool.ruff.lint]
+ignore = ["DTZ001"]
+
 [tool.ruff.lint.per-file-ignores]
 # Notebook exports (jupytext/nbconvert) interleave imports with markdown cells,
 # so module-level imports legitimately appear below the first statement.

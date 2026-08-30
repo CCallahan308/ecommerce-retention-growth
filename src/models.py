@@ -1,9 +1,9 @@
 import logging
+from typing import Any
 
+import numpy as np
 import pandas as pd
 import xgboost as xgb
-from typing import Tuple, Dict, Any
-
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer, make_column_selector
@@ -15,10 +15,13 @@ from sklearn.metrics import (
     log_loss,
     roc_auc_score,
 )
-from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold
+from sklearn.model_selection import (
+    RandomizedSearchCV,
+    StratifiedKFold,
+    train_test_split,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-import numpy as np
 
 from src.config import (
     CHURN_WINDOW_DAYS,
@@ -31,7 +34,7 @@ from src.config import (
 logger = logging.getLogger(__name__)
 
 
-def get_splits(X: pd.DataFrame, y: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def get_splits(X: pd.DataFrame, y: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     """
     Split the dataset into training and testing sets, stratifying on the target.
 
@@ -84,7 +87,7 @@ def make_pipeline() -> ColumnTransformer:
         remainder="drop"
     )
 
-def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pipeline, prep: ColumnTransformer) -> Tuple[Pipeline, Pipeline]:
+def train_models(X_train: pd.DataFrame, y_train: pd.Series, feature_pipeline: Pipeline, prep: ColumnTransformer) -> tuple[Pipeline, Pipeline]:
     """
     Train and tune baseline and optimized machine learning models (Logistic Regression, XGBoost).
 
@@ -201,7 +204,7 @@ def calibrate_model(
     return calibrated
 
 
-def evaluate_model(model: Any, X_test: pd.DataFrame, y_test: pd.Series, name: str) -> Dict[str, float]:
+def evaluate_model(model: Any, X_test: pd.DataFrame, y_test: pd.Series, name: str) -> dict[str, float]:
     """
     Evaluate a fitted model on test data logging ROC-AUC, PR-AUC, LogLoss, and Brier-Score.
 
@@ -245,9 +248,11 @@ if __name__ == "__main__":
 
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     from src.data_loader import load_all_data
-    from src.features import engineer_features
-
-    from src.features import RFMFeatureTransformer, EngagementFeatureTransformer
+    from src.features import (
+        EngagementFeatureTransformer,
+        RFMFeatureTransformer,
+        engineer_features,
+    )
 
     m, t, u = load_all_data()
 

@@ -1,7 +1,6 @@
 import logging
 import os
 from datetime import datetime
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -157,7 +156,7 @@ class RFMFeatureTransformer(BaseEstimator, TransformerMixin):
         self.transactions = transactions
         self.cutoff_date = cutoff_date
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "RFMFeatureTransformer":
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> "RFMFeatureTransformer":
         """
         Fit the transformer (no-op).
 
@@ -250,7 +249,7 @@ class EngagementFeatureTransformer(BaseEstimator, TransformerMixin):
         self.user_logs = user_logs
         self.cutoff_date = cutoff_date
 
-    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> "EngagementFeatureTransformer":
+    def fit(self, X: pd.DataFrame, y: pd.Series | None = None) -> "EngagementFeatureTransformer":
         """
         Fit the transformer (no-op).
 

@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import Tuple
 
 import pandas as pd
 
@@ -126,7 +125,7 @@ def load_user_logs(
     return df
 
 
-def load_all_data(data_dir: str = DATA_DIR) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_all_data(data_dir: str = DATA_DIR) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load all three primary datasets simultaneously.
 

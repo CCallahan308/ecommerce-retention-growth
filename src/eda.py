@@ -5,7 +5,6 @@ EDA plots for the subscription dataset.
 import logging
 import os
 import sys
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -15,7 +14,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from src.data_loader import load_all_data  # noqa: E402
+from src.data_loader import load_all_data
 
 sns.set_theme(style="white", context="talk", palette="viridis")
 plt.rcParams.update(
@@ -39,10 +38,10 @@ FIG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "figures")
 
 
 def plot_registration_cohorts(
-    members_df: pd.DataFrame, save_path: Optional[str] = None
+    members_df: pd.DataFrame, save_path: str | None = None
 ) -> None:
     logger.info("Plotting registration cohorts")
-    fig, ax = plt.subplots(figsize=(12, 6))
+    _fig, ax = plt.subplots(figsize=(12, 6))
 
     members_df["reg_month"] = (
         members_df["registration_init_time"].dt.to_period("M").dt.to_timestamp()
@@ -68,10 +67,10 @@ def plot_registration_cohorts(
 
 
 def plot_transaction_trends(
-    transactions_df: pd.DataFrame, save_path: Optional[str] = None
+    transactions_df: pd.DataFrame, save_path: str | None = None
 ) -> None:
     logger.info("Plotting transaction breakdown")
-    fig, ax = plt.subplots(1, 2, figsize=(14, 6))
+    _fig, ax = plt.subplots(1, 2, figsize=(14, 6))
 
     sns.countplot(
         data=transactions_df,
@@ -110,10 +109,10 @@ def plot_transaction_trends(
 
 
 def plot_usage_intensity(
-    user_logs_df: pd.DataFrame, save_path: Optional[str] = None
+    user_logs_df: pd.DataFrame, save_path: str | None = None
 ) -> None:
     logger.info("Plotting usage distribution")
-    fig, ax = plt.subplots(figsize=(10, 6))
+    _fig, ax = plt.subplots(figsize=(10, 6))
 
     hours = user_logs_df["total_secs"] / 3600
     p99 = hours.quantile(0.99)
