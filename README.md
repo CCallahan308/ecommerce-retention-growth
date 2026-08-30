@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>Subscription Churn Prediction & Retention ROI</h1>
-  <p><strong>Predicting 30-day churn and segmenting users to maximize retention campaign ROI.</strong></p>
+  <h1>Retention Economics: Churn, LTV Segments & Win-Back ROI</h1>
+  <p><strong>On the KKBox/WSDM subscription dataset: predict 30-day churn, segment by lifetime value, and size a win-back budget.</strong></p>
 
   <p>
     <a href="https://github.com/CCallahan308/ecommerce-retention-growth/actions/workflows/validation.yml"><img src="https://github.com/CCallahan308/ecommerce-retention-growth/actions/workflows/validation.yml/badge.svg" alt="Validation"></a>
@@ -210,3 +210,11 @@ the memory (roughly 8–10 GB free).
 Python 3.10+ (CI runs and pins 3.11), dependencies in `pyproject.toml`; a fully
 pinned environment is in `requirements-lock.txt`. Key packages: XGBoost,
 scikit-learn, pandas, SHAP.
+
+## Related churn work
+
+Three retention projects, three different questions:
+
+- [SignalForge](https://github.com/CCallahan308/signalforge) — *which model, and is the difference real?* (bootstrap CIs, paired tests, calibration)
+- [Churn ROI Simulator](https://github.com/CCallahan308/churn-roi-simulator) — *what is a churn score worth in dollars when the base rate caps lift?* (retention-budget ROI simulator)
+- **This repo** — *which customers to win back, at what LTV?* (KKBox segmentation)
