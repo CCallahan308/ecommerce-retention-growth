@@ -384,7 +384,7 @@ tqdm==4.67.3
     # via
     #   ecommerce-retention-growth (pyproject.toml)
     #   shap
-traitlets==5.15.0
+traitlets==5.16.1
     # via
     #   ipykernel
     #   ipython
