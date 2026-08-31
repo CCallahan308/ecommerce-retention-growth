@@ -84,7 +84,7 @@ inflate64==1.0.4
     # via py7zr
 iniconfig==2.3.0
     # via pytest
-ipykernel==7.2.0
+ipykernel==7.3.0
     # via
     #   jupyter
     #   jupyter-console
